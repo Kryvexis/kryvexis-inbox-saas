@@ -55,11 +55,20 @@ export async function POST(req: Request) {
   const phone = "27" + String(Math.floor(600000000 + Math.random() * 99999999));
   const tags = mode === "lead" ? "lead,urgent" : "lead";
 
-  const { data: contact } = await admin
+  const { data: contact, error: contactErr } = await admin
     .from("contacts")
     .insert({ tenant_id, name, phone, tags })
-    .select("id,name,phone")
+    .select("id")
     .single();
+
+  if (contactErr || !contact?.id) {
+    return NextResponse.json(
+      { error: "Failed to create contact", details: contactErr?.message ?? "contact is null" },
+      { status: 500 }
+    );
+  }
+
+  const contactId = contact.id;
 
   // Create conversation
   const subject = pick(["Pricing inquiry", "Delivery question", "New order", "Quote request"]);
@@ -74,7 +83,7 @@ export async function POST(req: Request) {
     .from("conversations")
     .insert({
       tenant_id,
-      contact_id: contact.id,
+      contact_id: contactId,
       status: "open",
       subject,
       last_message_preview: inboundBody,
