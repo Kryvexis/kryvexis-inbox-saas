@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     "How long does shipping take?",
   ]);
 
-  const { data: convo } = await admin
+  const { data: convo, error: convoErr } = await admin
     .from("conversations")
     .insert({
       tenant_id,
@@ -92,10 +92,18 @@ export async function POST(req: Request) {
     .select("id")
     .single();
 
-  // Insert inbound message
+  if (convoErr || !convo?.id) {
+    return NextResponse.json(
+      { error: "Failed to create conversation", details: convoErr?.message ?? "convo is null" },
+      { status: 500 }
+    );
+  }
+
+  const convoId = convo.id;
+// Insert inbound message
   await admin.from("messages").insert({
     tenant_id,
-    conversation_id: convo.id,
+    conversation_id: convoId,
     direction: "inbound",
     body: inboundBody,
   });
@@ -111,12 +119,12 @@ export async function POST(req: Request) {
   if (matched) {
     await admin.from("messages").insert({
       tenant_id,
-      conversation_id: convo.id,
+      conversation_id: convoId,
       direction: "outbound",
       body: matched.auto_reply,
     });
-    await admin.from("conversations").update({ last_message_preview: matched.auto_reply, updated_at: new Date().toISOString() }).eq("id", convo.id);
+    await admin.from("conversations").update({ last_message_preview: matched.auto_reply, updated_at: new Date().toISOString() }).eq("id", convoId);
   }
 
-  return NextResponse.redirect(new URL(`/app/inbox?id=${convo.id}`, req.url));
+  return NextResponse.redirect(new URL(`/app/inbox?id=${convoId}`, req.url));
 }
