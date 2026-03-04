@@ -34,8 +34,20 @@ export async function POST(req: Request) {
 
   if (!tenant_id) {
     // If demo open but no user/tenant, create a demo tenant automatically
-    const { data: t } = await admin.from("tenants").insert({ name: "Kryvexis Demo" }).select("id").single();
-    tenant_id = t.id as string;
+    const { data: t, error: tErr } = await admin
+      .from("tenants")
+      .insert({ name: "Kryvexis Demo" })
+      .select("id")
+      .single();
+
+    if (tErr || !t?.id) {
+      return NextResponse.json(
+        { error: "Failed to create demo tenant", details: tErr?.message || "No tenant id returned" },
+        { status: 500 }
+      );
+    }
+
+    tenant_id = t.id;
   }
 
   // Create / upsert contact
