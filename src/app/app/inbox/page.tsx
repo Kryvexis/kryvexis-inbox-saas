@@ -6,7 +6,17 @@ function fmt(ts: string) {
   return new Date(ts).toLocaleString();
 }
 
-export default async function InboxPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function InboxPage({
+  // Next.js 15 types model `searchParams` as async (Promise-backed) in PageProps.
+  // `await` works for both Promises and plain objects at runtime.
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
+  const sp = (await searchParams) ?? {};
+
   const profile = await getProfile();
   if (!profile) redirect("/login");
   const tenant = await requireTenant(profile);
@@ -14,10 +24,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Record
 
   const tenantId = tenant.tenantId;
   const convos = await listConversations(tenantId);
-  const selected = String(searchParams.id || convos?.[0]?.id || "");
+  const selected = String(sp.id || convos?.[0]?.id || "");
   const messages = selected ? await listMessages(tenantId, selected) : [];
 
-  const demo = String(searchParams.demo || "") === "1";
+  const demo = String(sp.demo || "") === "1";
 
   return (
     <div className="grid gap-4">
