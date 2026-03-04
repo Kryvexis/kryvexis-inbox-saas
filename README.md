@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kryvexis Inbox SaaS (Product Shell + Real DB) 🚀
 
-## Getting Started
+This is a **Vercel-ready** Next.js SaaS product (Apple-clean UI) with **Supabase Auth + Postgres**.
+No WhatsApp APIs yet — but you can **inject demo leads** and run real demos.
 
-First, run the development server:
-
+## 1) Setup (local)
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 2) Supabase setup
+1. Create a Supabase project
+2. In Supabase SQL editor, run: `supabase/schema.sql`
+3. In Supabase Auth settings, disable email confirmations for testing (optional)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 3) Env vars
+Put in `.env.local` (and in Vercel project env vars):
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- NEXT_PUBLIC_SITE_URL (e.g. https://your-vercel-domain)
 
-## Learn More
+## 4) Demo mode (no APIs)
+- Signup -> Onboarding -> Create workspace
+- Go to Inbox -> Click "Inject demo lead"
+- Add automation rule: keyword `price` -> auto reply `Here are our packages...`
+- Inject demo lead again and watch auto reply appear
 
-To learn more about Next.js, take a look at the following resources:
+## 5) Deploy (Vercel)
+- Push to GitHub
+- Import repo in Vercel
+- Add env vars
+- Deploy ✅
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pages
+- / (marketing)
+- /login
+- /signup
+- /onboarding
+- /app/inbox
+- /app/contacts
+- /app/automations
+- /app/analytics
+- /app/settings
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Next upgrades (when you say so)
+- Quotes + invoices
+- Team invites + roles UI
+- Notes, tags, SLA timers
+- Realtime (Supabase realtime)
+- WhatsApp Cloud API integration
