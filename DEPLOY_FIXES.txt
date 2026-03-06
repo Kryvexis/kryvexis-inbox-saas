@@ -1,8 +1,6 @@
-Build fixes applied:
-1. Removed accidental top-level app directory that created a second Next.js app root.
-2. Added missing runtime dependencies required by imports:
-   - @supabase/ssr
-   - @supabase/supabase-js
-   - clsx
-   - tailwind-merge
-3. Removed the mismatched/corrupted package-lock.json so Vercel can generate a fresh lockfile during install.
+Deployment fixes applied:
+1. Removed stray top-level /app directory that created a duplicate App Router root.
+2. Added missing runtime dependencies used by Supabase and utility helpers.
+3. Removed stale package-lock.json so Vercel can generate a fresh dependency graph.
+4. Pinned Node.js to 20.x for Vercel via package.json engines.
+5. Added npm settings to reduce install noise and peer dependency friction.
