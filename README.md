@@ -1,9 +1,9 @@
 # Kryvexis Showcase Stable
 
-A **compile-clean, Vercel-friendly** SaaS showcase for demos.
+A **compile-clean, Vercel-friendly** customer operations workspace for Kryvexis.
 
 ## What it is
-- Apple-clean product shell
+- Polished customer operations shell
 - Inbox
 - Contacts CRM
 - Automations
@@ -13,7 +13,7 @@ A **compile-clean, Vercel-friendly** SaaS showcase for demos.
 - Settings / team overview
 
 ## What it is not
-- No external APIs yet
+- Prepared for future channel integrations
 - No Supabase needed
 - No env vars needed
 - Data persists in the browser via localStorage
@@ -30,7 +30,7 @@ No environment variables are required.
 
 ## Demo flow
 1. Open Inbox
-2. Click **Inject demo lead**
+2. Click **Add sample lead**
 3. Reply to messages
 4. Add automation rules
 5. Show quotes and products

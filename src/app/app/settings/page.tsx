@@ -16,7 +16,7 @@ export default function SettingsPage() {
         <div className="kx-card2 p-6">
           <div className="text-sm font-semibold">Workspace</div>
           <div className="mt-3 text-sm text-neutral-600">
-            <div>Name: <b>Kryvexis Inbox</b></div>
+            <div>Name: <b>Kryvexis Inbox System</b></div>
             <div className="mt-1">Plan: <b>Showcase</b></div>
             <div className="mt-1">Mode: <b>No APIs attached yet</b></div>
           </div>

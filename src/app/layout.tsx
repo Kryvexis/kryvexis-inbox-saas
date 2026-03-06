@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Kryvexis Showcase",
-  description: "Stable Vercel-ready SaaS showcase before API integration."
+  description: "Kryvexis Inbox System for customer conversations, quotes, products, and team workflow."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

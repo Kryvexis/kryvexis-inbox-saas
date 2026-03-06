@@ -55,7 +55,7 @@ export default async function OnboardingPage() {
             <button className="kx-btn kx-btn-primary px-5 py-3">Create workspace</button>
 
             <div className="mt-3 text-xs text-neutral-500">
-              Tip: For demos, create “Kryvexis Demo” and inject messages from the Inbox sidebar.
+              Tip: Create a workspace name that matches your business and add sample customer activity from the Inbox sidebar.
             </div>
           </form>
         </div>

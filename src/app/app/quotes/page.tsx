@@ -13,7 +13,7 @@ export default function QuotesPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="text-xl font-semibold">Quotes</div>
-          <div className="text-sm text-neutral-500">Simple sales module for demos.</div>
+          <div className="text-sm text-neutral-500">Create, manage, and track customer quotes from one workspace.</div>
         </div>
         <div className="flex gap-2">
           <input className="kx-input" value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="customer" />

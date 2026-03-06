@@ -17,7 +17,7 @@ export default function AnalyticsPage() {
     <div className="grid gap-4">
       <div>
         <div className="text-xl font-semibold">Analytics</div>
-        <div className="text-sm text-neutral-500">Simple KPIs for demos and sales calls.</div>
+        <div className="text-sm text-neutral-500">Track performance, workload, and sales activity from one dashboard.</div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -28,7 +28,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="kx-card2 p-6">
-        <div className="text-sm font-semibold">What to say in demos</div>
+        <div className="text-sm font-semibold">Operational highlights</div>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-neutral-600">
           <li>Every customer message lands in one shared inbox.</li>
           <li>Agents can assign, note, and close conversations.</li>

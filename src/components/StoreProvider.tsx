@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { seedState } from "@/lib/seed";
-import type { AppState, Conversation, Rule, Contact, Quote, Product, Message } from "@/lib/types";
+import type { AppState, Conversation, Rule, Contact, Quote, Product } from "@/lib/types";
 
 type Store = {
   state: AppState;
@@ -18,7 +18,7 @@ type Store = {
 };
 
 const StoreContext = createContext<Store | null>(null);
-const KEY = "kryvexis_showcase_state_v1";
+const KEY = "kryvexis_inbox_system_state_v1";
 
 function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -51,7 +51,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       conversations: prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
-        const msg: Message = { id: uid("m"), direction: "outbound", body, createdAt: new Date().toISOString() };
+        const msg = { id: uid("m"), direction: "outbound", body, createdAt: new Date().toISOString() };
         return {
           ...c,
           lastMessagePreview: body,
