@@ -12,3 +12,8 @@ This V2 zip includes:
 - Next 15 async cookies() support
 - fixed inbox searchParams typing
 - ignored ESLint during build
+
+
+2026-03-06 fix:
+- removed accidental top-level /app directory that caused Vercel to treat /app/automations/page.tsx as a second App Router root without a matching root layout
+- canonical app source remains under /src/app
