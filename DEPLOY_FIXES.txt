@@ -1,6 +1,14 @@
-Deployment fixes applied:
-1. Removed stray top-level /app directory that created a duplicate App Router root.
-2. Added missing runtime dependencies used by Supabase and utility helpers.
-3. Removed stale package-lock.json so Vercel can generate a fresh dependency graph.
-4. Pinned Node.js to 20.x for Vercel via package.json engines.
-5. Added npm settings to reduce install noise and peer dependency friction.
+If Vercel fails:
+1. Confirm all 4 env vars are set in Vercel:
+   - NEXT_PUBLIC_SUPABASE_URL
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+   - SUPABASE_SERVICE_ROLE_KEY
+   - NEXT_PUBLIC_SITE_URL
+2. Re-run supabase/schema.sql in Supabase if tables/triggers are missing.
+3. Redeploy.
+
+This V2 zip includes:
+- safer null checks in API routes
+- Next 15 async cookies() support
+- fixed inbox searchParams typing
+- ignored ESLint during build
