@@ -3,35 +3,16 @@
 @tailwind utilities;
 
 html, body { height: 100%; }
-body {
-  @apply bg-[#f5f7fb] text-neutral-900 antialiased;
-  background-image:
-    radial-gradient(circle at top left, rgba(59,130,246,0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(14,165,233,0.08), transparent 22%);
-}
+body { @apply bg-white text-neutral-900; }
 
 @layer components {
-  .kx-shell { @apply min-h-screen bg-transparent text-neutral-900; }
-  .kx-container { @apply mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8; }
-  .kx-page { @apply space-y-5 sm:space-y-6; }
-  .kx-card {
-    @apply rounded-[28px] border border-white/70 bg-white/90 shadow-[0_20px_70px_-30px_rgba(15,23,42,0.35)] backdrop-blur;
-  }
-  .kx-card2 {
-    @apply rounded-[24px] border border-black/5 bg-white shadow-[0_20px_45px_-35px_rgba(15,23,42,0.45)];
-  }
-  .kx-btn { @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition active:scale-[0.99]; }
-  .kx-btn-primary { @apply bg-neutral-950 text-white shadow-[0_16px_30px_-16px_rgba(15,23,42,0.8)] hover:bg-neutral-800; }
-  .kx-btn-ghost { @apply bg-white text-neutral-700 hover:bg-neutral-100; }
-  .kx-btn-soft { @apply bg-neutral-100 text-neutral-700 hover:bg-neutral-200; }
-  .kx-input { @apply w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-300 focus:ring-4 focus:ring-neutral-900/5; }
-  .kx-badge { @apply inline-flex items-center rounded-full border border-neutral-200 bg-white px-2.5 py-1 text-[11px] font-medium text-neutral-600; }
-  .kx-badge-dark { @apply inline-flex items-center rounded-full bg-neutral-950 px-2.5 py-1 text-[11px] font-medium text-white; }
-  .kx-status-open { @apply bg-emerald-50 text-emerald-700 border-emerald-100; }
-  .kx-status-pending { @apply bg-amber-50 text-amber-700 border-amber-100; }
-  .kx-status-closed { @apply bg-neutral-100 text-neutral-700 border-neutral-200; }
-  .kx-muted { @apply text-sm text-neutral-500; }
-  .kx-section-title { @apply text-2xl font-semibold tracking-tight sm:text-3xl; }
-  .kx-panel-title { @apply text-sm font-semibold text-neutral-900; }
-  .kx-mobile-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 5rem); }
+  .kx-shell { @apply min-h-screen bg-white text-neutral-900; }
+  .kx-container { @apply mx-auto max-w-7xl px-6; }
+  .kx-card { @apply rounded-3xl border border-neutral-200 bg-white shadow-soft; }
+  .kx-card2 { @apply rounded-2xl border border-neutral-200 bg-white shadow-sm; }
+  .kx-btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition; }
+  .kx-btn-primary { @apply bg-black text-white hover:opacity-90; }
+  .kx-btn-ghost { @apply text-neutral-700 hover:bg-neutral-100; }
+  .kx-input { @apply w-full rounded-xl border border-neutral-200 px-3 py-2 outline-none focus:ring-2 focus:ring-black/10; }
+  .kx-badge { @apply inline-flex items-center rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-600; }
 }

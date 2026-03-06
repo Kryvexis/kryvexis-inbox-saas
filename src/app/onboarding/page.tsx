@@ -41,9 +41,9 @@ export default async function OnboardingPage() {
       <TopNav email={profile.email} />
       <div className="kx-container py-12 max-w-2xl">
         <div className="kx-card p-8">
-          <div className="kx-h1">Create your workspace</div>
+          <div className="kx-h1">Set up your workspace</div>
           <p className="mt-3 text-neutral-600">
-            Name your company. This creates your tenant and unlocks the Inbox.
+            Set up your workspace name to activate your customer operations environment.
           </p>
 
           <form action={createTenant} className="mt-8 space-y-3">
@@ -55,7 +55,7 @@ export default async function OnboardingPage() {
             <button className="kx-btn kx-btn-primary px-5 py-3">Create workspace</button>
 
             <div className="mt-3 text-xs text-neutral-500">
-              Tip: For demos, create “Kryvexis Demo” and inject messages from the Inbox sidebar.
+              Tip: You can add sample customer activity later from the Inbox quick actions panel.
             </div>
           </form>
         </div>
