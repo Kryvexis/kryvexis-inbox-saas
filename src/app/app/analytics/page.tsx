@@ -6,18 +6,22 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export default async function AnalyticsPage() {
   const profile = await getProfile();
-  if (!profile) redirect("/login");
-  const tenant = await requireTenant(profile);
-  if ("redirectTo" in tenant) redirect(tenant.redirectTo);
+  if (!profile) {
+    redirect("/login");
+  }
 
-  const tenantId = tenant.tenantId;
+  const tenantResult = await requireTenant(profile);
+  if ("redirectTo" in tenantResult) {
+    redirect(tenantResult.redirectTo);
+  }
+
+  const tenantId = tenantResult.tenantId;
   const convos = await listConversations(tenantId);
 
   const open = convos.filter((c: any) => c.status === "open").length;
   const pending = convos.filter((c: any) => c.status === "pending").length;
   const closed = convos.filter((c: any) => c.status === "closed").length;
 
-  // last 24h messages count
   const supabase = await supabaseServer();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count } = await supabase
