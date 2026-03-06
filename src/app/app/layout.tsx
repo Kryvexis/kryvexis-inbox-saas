@@ -1,21 +1,10 @@
-import { redirect } from "next/navigation";
-import { getProfile, requireTenant } from "@/lib/data";
-import { Sidebar } from "@/components/Sidebar";
-import { TopNav } from "@/components/TopNav";
+import { AppShell } from "@/components/AppShell";
+import { StoreProvider } from "@/components/StoreProvider";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const profile = await getProfile();
-  if (!profile) redirect("/login");
-  const tenant = await requireTenant(profile);
-  if ("redirectTo" in tenant) redirect(tenant.redirectTo);
-
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-white">
-      <TopNav email={profile.email} />
-      <div className="kx-container py-6 flex gap-6">
-        <Sidebar />
-        <main className="flex-1 min-w-0">{children}</main>
-      </div>
-    </div>
+    <StoreProvider>
+      <AppShell>{children}</AppShell>
+    </StoreProvider>
   );
 }

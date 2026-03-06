@@ -1,68 +1,40 @@
-import { redirect } from "next/navigation";
-import { getProfile, listConversations } from "@/lib/data";
+"use client";
+
+import { useStore } from "@/components/StoreProvider";
 import { Kpi } from "@/components/Kpi";
-import { BarChart3, Clock, Inbox } from "lucide-react";
-import { supabaseServer } from "@/lib/supabase/server";
 
-export default async function AnalyticsPage() {
-  const profile = await getProfile();
+export default function AnalyticsPage() {
+  const { state } = useStore();
 
-  if (!profile) {
-    redirect("/login");
-  }
-
-  if (!profile.tenant_id) {
-    redirect("/onboarding");
-  }
-
-  const tenantId = profile.tenant_id;
-  const convos = await listConversations(tenantId);
-
-  const open = convos.filter((c: any) => c.status === "open").length;
-  const pending = convos.filter((c: any) => c.status === "pending").length;
-  const closed = convos.filter((c: any) => c.status === "closed").length;
-
-  const supabase = await supabaseServer();
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count } = await supabase
-    .from("messages")
-    .select("*", { count: "exact", head: true })
-    .eq("tenant_id", tenantId)
-    .gte("created_at", since);
+  const open = state.conversations.filter((c) => c.status === "open").length;
+  const pending = state.conversations.filter((c) => c.status === "pending").length;
+  const closed = state.conversations.filter((c) => c.status === "closed").length;
+  const messages24h = state.conversations.flatMap((c) => c.messages).filter((m) => {
+    return Date.now() - new Date(m.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  }).length;
 
   return (
     <div className="grid gap-4">
       <div>
-        <div className="kx-h2">Analytics</div>
-        <div className="text-sm text-neutral-500">Simple KPIs for demos (expand later).</div>
+        <div className="text-xl font-semibold">Analytics</div>
+        <div className="text-sm text-neutral-500">Simple KPIs for demos and sales calls.</div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Kpi
-          label="Messages (24h)"
-          value={count ?? 0}
-          icon={<Clock size={18} className="text-neutral-500" />}
-        />
-        <Kpi
-          label="Open"
-          value={open}
-          icon={<Inbox size={18} className="text-neutral-500" />}
-        />
-        <Kpi
-          label="Closed"
-          value={closed}
-          icon={<BarChart3 size={18} className="text-neutral-500" />}
-        />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <Kpi label="Messages (24h)" value={messages24h} />
+        <Kpi label="Open" value={open} />
+        <Kpi label="Pending" value={pending} />
+        <Kpi label="Closed" value={closed} />
       </div>
 
       <div className="kx-card2 p-6">
-        <div className="text-sm font-semibold">Status breakdown</div>
-        <div className="mt-3 text-sm text-neutral-600">
-          Open: <b>{open}</b> • Pending: <b>{pending}</b> • Closed: <b>{closed}</b>
-        </div>
-        <div className="mt-3 text-xs text-neutral-500">
-          Next: response-time SLA, agent performance, revenue attribution.
-        </div>
+        <div className="text-sm font-semibold">What to say in demos</div>
+        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-neutral-600">
+          <li>Every customer message lands in one shared inbox.</li>
+          <li>Agents can assign, note, and close conversations.</li>
+          <li>Automations answer common questions instantly.</li>
+          <li>Quotes and product catalog help convert leads faster.</li>
+        </ul>
       </div>
     </div>
   );
