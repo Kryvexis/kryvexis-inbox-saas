@@ -34,20 +34,8 @@ export async function POST(req: Request) {
 
   if (!tenant_id) {
     // If demo open but no user/tenant, create a demo tenant automatically
-    const { data: t, error: tErr } = await admin
-      .from("tenants")
-      .insert({ name: "Kryvexis Demo" })
-      .select("id")
-      .single();
-
-    if (tErr || !t?.id) {
-      return NextResponse.json(
-        { error: "Failed to create demo tenant", details: tErr?.message || "No tenant id returned" },
-        { status: 500 }
-      );
-    }
-
-    tenant_id = t.id;
+    const { data: t } = await admin.from("tenants").insert({ name: "Kryvexis Demo" }).select("id").single();
+    tenant_id = t.id as string;
   }
 
   // Create / upsert contact
@@ -55,20 +43,11 @@ export async function POST(req: Request) {
   const phone = "27" + String(Math.floor(600000000 + Math.random() * 99999999));
   const tags = mode === "lead" ? "lead,urgent" : "lead";
 
-  const { data: contact, error: contactErr } = await admin
+  const { data: contact } = await admin
     .from("contacts")
     .insert({ tenant_id, name, phone, tags })
-    .select("id")
+    .select("id,name,phone")
     .single();
-
-  if (contactErr || !contact?.id) {
-    return NextResponse.json(
-      { error: "Failed to create contact", details: contactErr?.message ?? "contact is null" },
-      { status: 500 }
-    );
-  }
-
-  const contactId = contact.id;
 
   // Create conversation
   const subject = pick(["Pricing inquiry", "Delivery question", "New order", "Quote request"]);
@@ -79,11 +58,11 @@ export async function POST(req: Request) {
     "How long does shipping take?",
   ]);
 
-  const { data: convo, error: convoErr } = await admin
+  const { data: convo } = await admin
     .from("conversations")
     .insert({
       tenant_id,
-      contact_id: contactId,
+      contact_id: contact.id,
       status: "open",
       subject,
       last_message_preview: inboundBody,
@@ -92,18 +71,10 @@ export async function POST(req: Request) {
     .select("id")
     .single();
 
-  if (convoErr || !convo?.id) {
-    return NextResponse.json(
-      { error: "Failed to create conversation", details: convoErr?.message ?? "convo is null" },
-      { status: 500 }
-    );
-  }
-
-  const convoId = convo.id;
-// Insert inbound message
+  // Insert inbound message
   await admin.from("messages").insert({
     tenant_id,
-    conversation_id: convoId,
+    conversation_id: convo.id,
     direction: "inbound",
     body: inboundBody,
   });
@@ -119,12 +90,12 @@ export async function POST(req: Request) {
   if (matched) {
     await admin.from("messages").insert({
       tenant_id,
-      conversation_id: convoId,
+      conversation_id: convo.id,
       direction: "outbound",
       body: matched.auto_reply,
     });
-    await admin.from("conversations").update({ last_message_preview: matched.auto_reply, updated_at: new Date().toISOString() }).eq("id", convoId);
+    await admin.from("conversations").update({ last_message_preview: matched.auto_reply, updated_at: new Date().toISOString() }).eq("id", convo.id);
   }
 
-  return NextResponse.redirect(new URL(`/app/inbox?id=${convoId}`, req.url));
+  return NextResponse.redirect(new URL(`/app/inbox?id=${convo.id}`, req.url));
 }

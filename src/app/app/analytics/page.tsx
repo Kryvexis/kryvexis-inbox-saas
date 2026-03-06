@@ -8,9 +8,7 @@ export default async function AnalyticsPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
   const tenant = await requireTenant(profile);
-  if ("redirectTo" in tenant && typeof tenant.redirectTo === "string" && tenant.redirectTo.length > 0) {
-    redirect(tenant.redirectTo);
-  }
+  if ("redirectTo" in tenant) redirect(tenant.redirectTo);
 
   const tenantId = tenant.tenantId;
   const convos = await listConversations(tenantId);

@@ -6,16 +6,12 @@ function fmt(ts: string) {
   return new Date(ts).toLocaleString();
 }
 
-type SearchParams = Record<string, string | string[] | undefined>;
-
 export default async function InboxPage({
-  // Next.js 15 types model `searchParams` as async (Promise-backed) in PageProps.
-  // `await` works for both Promises and plain objects at runtime.
   searchParams,
 }: {
-  searchParams?: Promise<SearchParams>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sp = (await searchParams) ?? {};
+  const sp = await searchParams;
 
   const profile = await getProfile();
   if (!profile) redirect("/login");
