@@ -18,17 +18,20 @@ const items = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { injectLead } = useStore();
+  const { injectLead, state } = useStore();
+  const openCount = state.conversations.filter((conversation) => conversation.status === "open").length;
+  const quoteValue = state.quotes.reduce((sum, quote) => sum + quote.total, 0);
 
   return (
     <div className="kx-shell">
       <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/80 backdrop-blur">
-        <div className="kx-container flex items-center justify-between py-4">
+        <div className="kx-container flex flex-col gap-3 py-4 lg:flex-row lg:items-center lg:justify-between">
           <Link href="/" className="hover:opacity-90">
             <Logo />
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="kx-badge">Demo-ready</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="kx-badge">{openCount} open inbox threads</span>
+            <span className="kx-badge">R {quoteValue.toLocaleString()} quote value</span>
             <button className="kx-btn kx-btn-primary" onClick={injectLead}>Inject demo lead</button>
           </div>
         </div>

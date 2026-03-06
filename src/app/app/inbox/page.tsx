@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FilePlus2, Search } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
 
 export default function InboxPage() {
-  const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus } = useStore();
+  const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus, createQuoteFromConversation } = useStore();
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
+  const [query, setQuery] = useState("");
 
   const selected = useMemo(
     () => state.conversations.find((c) => c.id === selectedConversationId) ?? state.conversations[0],
@@ -14,69 +16,92 @@ export default function InboxPage() {
   );
 
   const selectedContact = state.contacts.find((c) => c.id === selected?.contactId);
+  const filteredConversations = state.conversations.filter((conversation) => {
+    const contact = state.contacts.find((item) => item.id === conversation.contactId);
+    const haystack = [contact?.name ?? "", contact?.phone ?? "", conversation.subject, conversation.lastMessagePreview, conversation.status].join(" ").toLowerCase();
+    return haystack.includes(query.trim().toLowerCase());
+  });
 
   return (
     <div className="grid gap-4">
-      <div>
-        <div className="text-xl font-semibold">Inbox</div>
-        <div className="text-sm text-neutral-500">Realtime-style product showcase without API dependencies.</div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="text-xl font-semibold">Inbox</div>
+          <div className="text-sm text-neutral-500">Shared inbox demo with statuses, notes, and quick quote creation.</div>
+        </div>
+        <div className="relative min-w-[260px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+          <input className="kx-input pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search customer, phone, subject" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr_320px]">
         <div className="kx-card2 overflow-hidden">
           <div className="border-b border-neutral-200 p-3 text-sm font-medium">Conversations</div>
           <div className="max-h-[72vh] overflow-auto">
-            {state.conversations.map((c) => {
-              const contact = state.contacts.find((x) => x.id === c.contactId);
-              const active = selected?.id === c.id;
+            {filteredConversations.map((conversation) => {
+              const contact = state.contacts.find((item) => item.id === conversation.contactId);
+              const active = selected?.id === conversation.id;
               return (
                 <button
-                  key={c.id}
-                  onClick={() => setSelectedConversationId(c.id)}
+                  key={conversation.id}
+                  onClick={() => setSelectedConversationId(conversation.id)}
                   className={active ? "block w-full border-b border-neutral-100 bg-neutral-50 p-4 text-left" : "block w-full border-b border-neutral-100 p-4 text-left hover:bg-neutral-50"}
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="truncate font-medium">{contact?.name ?? "Unknown"}</div>
-                    <span className="kx-badge">{c.status}</span>
+                    <span className="kx-badge">{conversation.status}</span>
                   </div>
-                  <div className="mt-1 truncate text-xs text-neutral-500">{c.lastMessagePreview}</div>
+                  <div className="mt-1 truncate text-xs text-neutral-500">{conversation.subject}</div>
+                  <div className="mt-1 truncate text-xs text-neutral-500">{conversation.lastMessagePreview}</div>
                   <div className="mt-2 text-xs text-neutral-500">{contact?.phone}</div>
                 </button>
               );
             })}
+            {!filteredConversations.length ? <div className="p-4 text-sm text-neutral-500">No conversations match your search.</div> : null}
           </div>
         </div>
 
         <div className="kx-card2 overflow-hidden">
-          <div className="border-b border-neutral-200 p-3 flex items-center justify-between">
+          <div className="border-b border-neutral-200 p-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium">{selectedContact?.name ?? "Select conversation"}</div>
               <div className="text-xs text-neutral-500">{selectedContact?.phone}</div>
             </div>
-            {selected ? (
-              <select
-                className="rounded-xl border border-neutral-200 px-3 py-2 text-sm"
-                value={selected.status}
-                onChange={(e) => updateStatus(selected.id, e.target.value as "open" | "pending" | "closed")}
-              >
-                <option value="open">open</option>
-                <option value="pending">pending</option>
-                <option value="closed">closed</option>
-              </select>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {selected ? (
+                <button className="rounded-xl border border-neutral-200 px-3 py-2 text-xs" onClick={() => createQuoteFromConversation(selected.id)}>
+                  <FilePlus2 size={13} className="mr-1 inline" />Create quote
+                </button>
+              ) : null}
+              {selected ? (
+                <select
+                  className="rounded-xl border border-neutral-200 px-3 py-2 text-sm"
+                  value={selected.status}
+                  onChange={(e) => updateStatus(selected.id, e.target.value as "open" | "pending" | "closed")}
+                >
+                  <option value="open">open</option>
+                  <option value="pending">pending</option>
+                  <option value="closed">closed</option>
+                </select>
+              ) : null}
+            </div>
           </div>
 
           <div className="max-h-[58vh] overflow-auto p-4 space-y-3">
-            {selected?.messages.map((m) => (
+            {selected?.messages.map((message) => (
               <div
-                key={m.id}
-                className={m.direction === "outbound"
+                key={message.id}
+                className={message.direction === "outbound"
                   ? "ml-auto max-w-[80%] rounded-2xl border border-black bg-black p-3 text-sm text-white"
-                  : "max-w-[80%] rounded-2xl border border-neutral-200 bg-white p-3 text-sm"}
+                  : message.direction === "internal"
+                    ? "max-w-[80%] rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm"
+                    : "max-w-[80%] rounded-2xl border border-neutral-200 bg-white p-3 text-sm"
+                }
               >
-                <div>{m.body}</div>
-                <div className={m.direction === "outbound" ? "mt-1 text-xs text-white/70" : "mt-1 text-xs text-neutral-500"}>
-                  {m.direction} • {new Date(m.createdAt).toLocaleString()}
+                <div>{message.body}</div>
+                <div className={message.direction === "outbound" ? "mt-1 text-xs text-white/70" : "mt-1 text-xs text-neutral-500"}>
+                  {message.direction} • {new Date(message.createdAt).toLocaleString()}
                 </div>
               </div>
             ))}
@@ -121,12 +146,13 @@ export default function InboxPage() {
           <div className="kx-card2 p-4">
             <div className="text-sm font-medium">Internal notes</div>
             <div className="mt-3 space-y-2">
-              {selected?.notes.map((n) => (
-                <div key={n.id} className="rounded-2xl border border-neutral-200 p-3 text-sm">
-                  <div>{n.body}</div>
-                  <div className="mt-1 text-xs text-neutral-500">{new Date(n.createdAt).toLocaleString()}</div>
+              {selected?.notes.map((entry) => (
+                <div key={entry.id} className="rounded-2xl border border-neutral-200 p-3 text-sm">
+                  <div>{entry.body}</div>
+                  <div className="mt-1 text-xs text-neutral-500">{new Date(entry.createdAt).toLocaleString()}</div>
                 </div>
               ))}
+              {!selected?.notes.length ? <div className="text-sm text-neutral-500">No notes yet for this conversation.</div> : null}
             </div>
             {selected ? (
               <div className="mt-3 flex gap-2">

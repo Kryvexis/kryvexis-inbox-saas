@@ -8,9 +8,11 @@ export type Contact = {
   tags: string[];
 };
 
+export type MessageDirection = "inbound" | "outbound" | "internal";
+
 export type Message = {
   id: string;
-  direction: "inbound" | "outbound" | "internal";
+  direction: MessageDirection;
   body: string;
   createdAt: string;
 };
@@ -33,19 +35,45 @@ export type Conversation = {
   notes: Note[];
 };
 
+export type RuleMatchType = "contains" | "exact" | "startsWith";
+export type RuleChannel = "inbox" | "quotes" | "both";
+
 export type Rule = {
   id: string;
   name: string;
   keyword: string;
   autoReply: string;
   enabled: boolean;
+  matchType: RuleMatchType;
+  channel: RuleChannel;
+  usageCount: number;
+  lastTriggeredAt?: string;
+};
+
+export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected";
+
+export type QuoteItem = {
+  id: string;
+  productId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number;
 };
 
 export type Quote = {
   id: string;
   customer: string;
+  contactId?: string;
+  conversationId?: string;
+  status: QuoteStatus;
+  items: QuoteItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
   amount: number;
-  status: "draft" | "sent" | "approved";
+  validUntil: string;
+  updatedAt: string;
+  notes?: string;
 };
 
 export type ProductStatus = "active" | "draft";
