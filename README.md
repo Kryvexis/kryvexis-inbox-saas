@@ -53,3 +53,10 @@ Put in `.env.local` (and in Vercel project env vars):
 - Notes, tags, SLA timers
 - Realtime (Supabase realtime)
 - WhatsApp Cloud API integration
+
+
+## V2 Stability fixes
+- Next 15 `searchParams` fixed
+- Safer Supabase null handling in API routes
+- Async `cookies()` compatibility for Next 15 server helpers
+- ESLint ignored during Vercel build

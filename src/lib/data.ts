@@ -8,15 +8,17 @@ export type Profile = {
 };
 
 export async function getProfile(): Promise<Profile | null> {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return null;
+
   const { data } = await supabase
     .from("profiles")
     .select("id, tenant_id, email, role")
     .eq("id", userData.user.id)
     .maybeSingle();
-  return (data as any) ?? null;
+
+  return (data as Profile | null) ?? null;
 }
 
 export async function requireTenant(profile: Profile) {
@@ -27,7 +29,7 @@ export async function requireTenant(profile: Profile) {
 }
 
 export async function listConversations(tenantId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("conversations")
     .select(`
@@ -38,12 +40,13 @@ export async function listConversations(tenantId: string) {
     .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false })
     .limit(50);
+
   if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function listMessages(tenantId: string, conversationId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("messages")
     .select("id, direction, body, created_at")
@@ -51,30 +54,33 @@ export async function listMessages(tenantId: string, conversationId: string) {
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
     .limit(200);
+
   if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function listContacts(tenantId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("contacts")
     .select("id, name, phone, email, tags, created_at")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(200);
+
   if (error) throw new Error(error.message);
   return data ?? [];
 }
 
 export async function listAutomations(tenantId: string) {
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data, error } = await supabase
     .from("automation_rules")
     .select("id, name, keyword, auto_reply, enabled, created_at")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(200);
+
   if (error) throw new Error(error.message);
   return data ?? [];
 }

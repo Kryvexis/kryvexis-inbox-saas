@@ -8,7 +8,7 @@ export default async function SettingsPage() {
   const tenant = await requireTenant(profile);
   if ("redirectTo" in tenant) redirect(tenant.redirectTo);
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const { data: tenantRow } = await supabase.from("tenants").select("id,name,created_at").eq("id", tenant.tenantId).single();
 
   return (

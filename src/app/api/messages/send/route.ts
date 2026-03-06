@@ -4,11 +4,14 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   const form = await req.formData();
-  const conversation_id = String(form.get("conversation_id") || "");
+  const conversationId = String(form.get("conversation_id") || "");
   const body = String(form.get("body") || "").trim();
-  if (!conversation_id || !body) return NextResponse.redirect(new URL("/app/inbox", req.url));
 
-  const ssr = supabaseServer();
+  if (!conversationId || !body) {
+    return NextResponse.redirect(new URL("/app/inbox", req.url));
+  }
+
+  const ssr = await supabaseServer();
   const { data: u } = await ssr.auth.getUser();
   if (!u.user) return NextResponse.redirect(new URL("/login", req.url));
 
@@ -18,30 +21,36 @@ export async function POST(req: Request) {
     { auth: { persistSession: false } }
   );
 
-  // Fetch tenant_id for conversation
-  const { data: convo, error: cErr } = await admin
+  const { data: convo, error: convoError } = await admin
     .from("conversations")
     .select("tenant_id")
-    .eq("id", conversation_id)
+    .eq("id", conversationId)
     .single();
-  if (cErr) return NextResponse.json({ error: cErr.message }, { status: 400 });
 
-  const tenant_id = convo.tenant_id as string;
+  if (convoError || !convo?.tenant_id) {
+    return NextResponse.json(
+      { error: convoError?.message || "Conversation not found" },
+      { status: 400 }
+    );
+  }
 
-  // Insert outbound message
-  const { error: mErr } = await admin.from("messages").insert({
-    tenant_id,
-    conversation_id,
+  const tenantId = convo.tenant_id as string;
+
+  const { error: msgError } = await admin.from("messages").insert({
+    tenant_id: tenantId,
+    conversation_id: conversationId,
     direction: "outbound",
     body,
   });
-  if (mErr) return NextResponse.json({ error: mErr.message }, { status: 400 });
 
-  // Update conversation preview
+  if (msgError) {
+    return NextResponse.json({ error: msgError.message }, { status: 400 });
+  }
+
   await admin
     .from("conversations")
     .update({ last_message_preview: body, updated_at: new Date().toISOString() })
-    .eq("id", conversation_id);
+    .eq("id", conversationId);
 
-  return NextResponse.redirect(new URL(`/app/inbox?id=${conversation_id}`, req.url));
+  return NextResponse.redirect(new URL(`/app/inbox?id=${conversationId}`, req.url));
 }

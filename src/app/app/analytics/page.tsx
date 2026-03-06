@@ -18,7 +18,7 @@ export default async function AnalyticsPage() {
   const closed = convos.filter((c: any) => c.status === "closed").length;
 
   // last 24h messages count
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count } = await supabase
     .from("messages")

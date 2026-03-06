@@ -13,7 +13,7 @@ export default async function OnboardingPage() {
     const name = String(formData.get("name") || "").trim();
     if (!name) return;
 
-    const supabase = supabaseServer();
+    const supabase = await supabaseServer();
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     if (!user) return;
