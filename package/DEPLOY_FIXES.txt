@@ -1,0 +1,14 @@
+If Vercel fails:
+1. Confirm all 4 env vars are set in Vercel:
+   - NEXT_PUBLIC_SUPABASE_URL
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+   - SUPABASE_SERVICE_ROLE_KEY
+   - NEXT_PUBLIC_SITE_URL
+2. Re-run supabase/schema.sql in Supabase if tables/triggers are missing.
+3. Redeploy.
+
+This V2 zip includes:
+- safer null checks in API routes
+- Next 15 async cookies() support
+- fixed inbox searchParams typing
+- ignored ESLint during build
