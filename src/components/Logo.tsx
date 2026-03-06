@@ -6,7 +6,7 @@ export function Logo() {
       </div>
       <div className="leading-tight">
         <div className="font-semibold">Kryvexis</div>
-        <div className="text-sm text-neutral-500">Customer Operations</div>
+        <div className="text-sm text-neutral-500">Showcase SaaS</div>
       </div>
     </div>
   );

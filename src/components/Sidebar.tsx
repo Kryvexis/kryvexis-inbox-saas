@@ -44,15 +44,15 @@ export function Sidebar() {
         </nav>
 
         <div className="mt-6 rounded-3xl border border-neutral-200 p-4">
-          <div className="text-sm font-semibold">Quick actions</div>
+          <div className="text-sm font-semibold">Demo tools</div>
           <div className="mt-1 text-xs text-neutral-500">
-            Add sample activity to preview the workspace flow.
+            Inject fake messages (no WhatsApp API needed).
           </div>
           <Link
             className="mt-3 inline-block w-full text-center kx-btn kx-btn-primary"
             href="/app/inbox?demo=1"
           >
-            Add sample lead
+            Inject demo lead
           </Link>
         </div>
       </div>

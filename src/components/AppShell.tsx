@@ -28,8 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Logo />
           </Link>
           <div className="flex items-center gap-3">
-            <span className="kx-badge">Workspace active</span>
-            <button className="kx-btn kx-btn-primary" onClick={injectLead}>Add sample lead</button>
+            <span className="kx-badge">Demo-ready</span>
+            <button className="kx-btn kx-btn-primary" onClick={injectLead}>Inject demo lead</button>
           </div>
         </div>
       </header>

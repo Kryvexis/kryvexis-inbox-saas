@@ -19,7 +19,7 @@ export default function InboxPage() {
     <div className="grid gap-4">
       <div>
         <div className="text-xl font-semibold">Inbox</div>
-        <div className="text-sm text-neutral-500">Manage inbound conversations, follow-ups, and customer activity from one inbox.</div>
+        <div className="text-sm text-neutral-500">Realtime-style product showcase without API dependencies.</div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr_320px]">
@@ -59,9 +59,9 @@ export default function InboxPage() {
                 value={selected.status}
                 onChange={(e) => updateStatus(selected.id, e.target.value as "open" | "pending" | "closed")}
               >
-                <option value="open">Open</option>
-                <option value="pending">Awaiting response</option>
-                <option value="closed">Closed</option>
+                <option value="open">open</option>
+                <option value="pending">pending</option>
+                <option value="closed">closed</option>
               </select>
             ) : null}
           </div>
@@ -107,7 +107,7 @@ export default function InboxPage() {
 
         <div className="space-y-4">
           <div className="kx-card2 p-4">
-            <div className="text-sm font-medium">Customer details</div>
+            <div className="text-sm font-medium">Customer profile</div>
             <div className="mt-3 text-sm">
               <div><span className="text-neutral-500">Name:</span> {selectedContact?.name ?? "—"}</div>
               <div className="mt-1"><span className="text-neutral-500">Phone:</span> {selectedContact?.phone ?? "—"}</div>

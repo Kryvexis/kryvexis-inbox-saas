@@ -9,7 +9,7 @@ export default function SettingsPage() {
     <div className="grid gap-4">
       <div>
         <div className="text-xl font-semibold">Settings</div>
-        <div className="text-sm text-neutral-500">Workspace details, team access, and operating mode.</div>
+        <div className="text-sm text-neutral-500">Workspace details and team overview.</div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -17,8 +17,8 @@ export default function SettingsPage() {
           <div className="text-sm font-semibold">Workspace</div>
           <div className="mt-3 text-sm text-neutral-600">
             <div>Name: <b>Kryvexis Inbox</b></div>
-            <div className="mt-1">Plan: <b>Business Workspace</b></div>
-            <div className="mt-1">Mode: <b>Local data mode</b></div>
+            <div className="mt-1">Plan: <b>Showcase</b></div>
+            <div className="mt-1">Mode: <b>No APIs attached yet</b></div>
           </div>
         </div>
 

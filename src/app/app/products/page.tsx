@@ -14,7 +14,7 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="text-xl font-semibold">Products</div>
-          <div className="text-sm text-neutral-500">Manage your product catalog, pricing, and availability in one place.</div>
+          <div className="text-sm text-neutral-500">Catalog + pricing for a real sales demo.</div>
         </div>
         <div className="flex gap-2">
           <input className="kx-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="product name" />
@@ -29,7 +29,7 @@ export default function ProductsPage() {
               setStock("");
             }}
           >
-            Add item
+            Add product
           </button>
         </div>
       </div>
