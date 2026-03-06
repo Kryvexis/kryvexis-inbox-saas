@@ -14,14 +14,52 @@ type Store = {
   addNote: (conversationId: string, body: string) => void;
   updateStatus: (conversationId: string, status: Conversation["status"]) => void;
   addQuote: (customer: string, amount: number) => void;
-  addProduct: (name: string, price: number, stock: number) => void;
+  addProduct: (product: Omit<Product, "id" | "updatedAt">) => void;
+  updateProduct: (productId: string, updates: Partial<Omit<Product, "id" | "updatedAt">>) => void;
+  removeProduct: (productId: string) => void;
+  duplicateProduct: (productId: string) => void;
+  adjustProductStock: (productId: string, delta: number) => void;
+  toggleProductStatus: (productId: string) => void;
 };
 
 const StoreContext = createContext<Store | null>(null);
-const KEY = "kryvexis_showcase_state_v1";
+const KEY = "kryvexis_showcase_state_v2";
 
 function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 12);
+}
+
+function normalizeProduct(input: Partial<Product>, index: number): Product {
+  const name = input.name?.trim() || `Product ${index + 1}`;
+  const skuBase = input.sku?.trim() || slugify(name) || `ITEM-${index + 1}`;
+  return {
+    id: input.id || uid("p"),
+    name,
+    sku: skuBase,
+    category: input.category?.trim() || "General",
+    description: input.description?.trim() || "",
+    price: typeof input.price === "number" && Number.isFinite(input.price) ? input.price : 0,
+    stock: typeof input.stock === "number" && Number.isFinite(input.stock) ? input.stock : 0,
+    status: input.status === "draft" ? "draft" : "active",
+    featured: Boolean(input.featured),
+    updatedAt: input.updatedAt || new Date().toISOString(),
+  };
+}
+
+function normalizeState(input: AppState): AppState {
+  return {
+    ...input,
+    products: (input.products ?? []).map((product, index) => normalizeProduct(product, index)),
+  };
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -30,13 +68,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY);
+      const raw = localStorage.getItem(KEY) ?? localStorage.getItem("kryvexis_showcase_state_v1");
       if (raw) {
-        const parsed = JSON.parse(raw) as AppState;
+        const parsed = normalizeState(JSON.parse(raw) as AppState);
         setState(parsed);
         setSelectedConversationId(parsed.conversations[0]?.id ?? null);
       }
-    } catch {}
+    } catch {
+      setState(seedState);
+    }
   }, []);
 
   useEffect(() => {
@@ -144,10 +184,73 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, quotes: [quote, ...prev.quotes] }));
   }
 
-  function addProduct(name: string, price: number, stock: number) {
-    if (!name.trim() || Number.isNaN(price) || Number.isNaN(stock)) return;
-    const product: Product = { id: uid("p"), name, price, stock };
+  function addProduct(productInput: Omit<Product, "id" | "updatedAt">) {
+    if (!productInput.name.trim() || Number.isNaN(productInput.price) || Number.isNaN(productInput.stock)) return;
+    const product = normalizeProduct({
+      ...productInput,
+      id: uid("p"),
+      updatedAt: new Date().toISOString(),
+    }, state.products.length);
     setState((prev) => ({ ...prev, products: [product, ...prev.products] }));
+  }
+
+  function updateProduct(productId: string, updates: Partial<Omit<Product, "id" | "updatedAt">>) {
+    setState((prev) => ({
+      ...prev,
+      products: prev.products.map((product, index) =>
+        product.id === productId
+          ? normalizeProduct({ ...product, ...updates, id: product.id, updatedAt: new Date().toISOString() }, index)
+          : product
+      ),
+    }));
+  }
+
+  function removeProduct(productId: string) {
+    setState((prev) => ({
+      ...prev,
+      products: prev.products.filter((product) => product.id !== productId),
+    }));
+  }
+
+  function duplicateProduct(productId: string) {
+    const existing = state.products.find((product) => product.id === productId);
+    if (!existing) return;
+    addProduct({
+      ...existing,
+      name: `${existing.name} Copy`,
+      sku: `${existing.sku}-COPY`,
+      featured: false,
+    });
+  }
+
+  function adjustProductStock(productId: string, delta: number) {
+    setState((prev) => ({
+      ...prev,
+      products: prev.products.map((product, index) =>
+        product.id === productId
+          ? normalizeProduct({
+              ...product,
+              stock: Math.max(0, product.stock + delta),
+              updatedAt: new Date().toISOString(),
+            }, index)
+          : product
+      ),
+    }));
+  }
+
+  function toggleProductStatus(productId: string) {
+    setState((prev) => ({
+      ...prev,
+      products: prev.products.map((product, index) =>
+        product.id === productId
+          ? normalizeProduct({
+              ...product,
+              status: product.status === "active" ? "draft" : "active",
+              updatedAt: new Date().toISOString(),
+            }, index)
+          : product
+      ),
+    }));
   }
 
   const value = useMemo<Store>(() => ({
@@ -160,7 +263,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addNote,
     updateStatus,
     addQuote,
-    addProduct
+    addProduct,
+    updateProduct,
+    removeProduct,
+    duplicateProduct,
+    adjustProductStock,
+    toggleProductStatus,
   }), [state, selectedConversationId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

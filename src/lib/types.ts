@@ -48,11 +48,19 @@ export type Quote = {
   status: "draft" | "sent" | "approved";
 };
 
+export type ProductStatus = "active" | "draft";
+
 export type Product = {
   id: string;
   name: string;
+  sku: string;
+  category: string;
+  description: string;
   price: number;
   stock: number;
+  status: ProductStatus;
+  featured: boolean;
+  updatedAt: string;
 };
 
 export type TeamMember = {
