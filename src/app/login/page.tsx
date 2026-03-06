@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Logo } from "@/components/Logo";
 
-export default function LoginPage() {
+function LoginForm() {
   const supabase = supabaseBrowser();
   const sp = useSearchParams();
   const next = sp.get("next") || "/app/inbox";
@@ -27,6 +27,32 @@ export default function LoginPage() {
   }
 
   return (
+    <form className="mt-6 space-y-3" onSubmit={onSubmit}>
+      <div>
+        <label className="text-sm font-medium">Email</label>
+        <input className="mt-2 kx-input" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Password</label>
+        <input
+          type="password"
+          className="mt-2 kx-input"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </div>
+
+      {err ? <div className="text-sm text-red-600">{err}</div> : null}
+
+      <button disabled={busy} className="w-full kx-btn kx-btn-primary">
+        {busy ? "Signing in…" : "Sign in"}
+      </button>
+    </form>
+  );
+}
+
+export default function LoginPage() {
+  return (
     <main className="min-h-screen bg-white">
       <div className="kx-container py-12 max-w-md">
         <Link href="/" className="text-sm text-neutral-600 hover:underline">
@@ -40,27 +66,9 @@ export default function LoginPage() {
             <div className="text-sm text-neutral-500">Welcome back.</div>
           </div>
 
-          <form className="mt-6 space-y-3" onSubmit={onSubmit}>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <input className="mt-2 kx-input" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Password</label>
-              <input
-                type="password"
-                className="mt-2 kx-input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            {err ? <div className="text-sm text-red-600">{err}</div> : null}
-
-            <button disabled={busy} className="w-full kx-btn kx-btn-primary">
-              {busy ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
+          <Suspense fallback={<div className="mt-6 text-sm text-neutral-500">Loading sign in…</div>}>
+            <LoginForm />
+          </Suspense>
 
           <div className="mt-4 text-sm text-neutral-600">
             No account?{" "}

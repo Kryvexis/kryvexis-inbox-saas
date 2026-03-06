@@ -101,19 +101,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (matched) autoReply = matched.autoReply;
 
     const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
-    const messages: Conversation["messages"] = [{
-      id: uid("m"),
-      direction: "inbound",
-      body: text,
-      createdAt: new Date().toISOString()
-    }];
+    const messages = [{ id: uid("m"), direction: "inbound" as const, body: text, createdAt: new Date().toISOString() }];
     if (autoReply) {
-      messages.push({
-        id: uid("m"),
-        direction: "outbound",
-        body: autoReply,
-        createdAt: new Date().toISOString()
-      });
+      messages.push({ id: uid("m"), direction: "outbound" as const, body: autoReply, createdAt: new Date().toISOString() });
     }
 
     const convo: Conversation = {
