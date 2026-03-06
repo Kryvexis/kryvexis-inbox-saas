@@ -8,11 +8,9 @@ export type Contact = {
   tags: string[];
 };
 
-export type MessageDirection = "inbound" | "outbound" | "internal";
-
 export type Message = {
   id: string;
-  direction: MessageDirection;
+  direction: "inbound" | "outbound" | "internal";
   body: string;
   createdAt: string;
 };
@@ -35,60 +33,26 @@ export type Conversation = {
   notes: Note[];
 };
 
-export type RuleMatchType = "contains" | "exact" | "startsWith";
-export type RuleChannel = "inbox" | "quotes" | "both";
-
 export type Rule = {
   id: string;
   name: string;
   keyword: string;
   autoReply: string;
   enabled: boolean;
-  matchType: RuleMatchType;
-  channel: RuleChannel;
-  usageCount: number;
-  lastTriggeredAt?: string;
-};
-
-export type QuoteStatus = "draft" | "sent" | "accepted" | "rejected";
-
-export type QuoteItem = {
-  id: string;
-  productId?: string;
-  name: string;
-  quantity: number;
-  unitPrice: number;
 };
 
 export type Quote = {
   id: string;
   customer: string;
-  contactId?: string;
-  conversationId?: string;
-  status: QuoteStatus;
-  items: QuoteItem[];
-  subtotal: number;
-  discount: number;
-  total: number;
   amount: number;
-  validUntil: string;
-  updatedAt: string;
-  notes?: string;
+  status: "draft" | "sent" | "approved";
 };
-
-export type ProductStatus = "active" | "draft";
 
 export type Product = {
   id: string;
   name: string;
-  sku: string;
-  category: string;
-  description: string;
   price: number;
   stock: number;
-  status: ProductStatus;
-  featured: boolean;
-  updatedAt: string;
 };
 
 export type TeamMember = {
