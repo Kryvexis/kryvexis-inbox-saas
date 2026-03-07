@@ -1,42 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCheck, CircleDot, Filter, MessageSquareShare, Search, Tags } from "lucide-react";
 import { useStore } from "@/components/StoreProvider";
-import type { Conversation, Status } from "@/lib/types";
 
-const statusLabels: Record<Status, string> = {
-  new: "New",
-  open: "Open",
-  waiting: "Awaiting customer",
-  resolved: "Resolved"
-};
+const statusOptions = ["all", "open", "pending", "closed"] as const;
+
+function statusLabel(status: "open" | "pending" | "closed") {
+  if (status === "pending") return "Awaiting customer";
+  if (status === "closed") return "Resolved";
+  return "Open";
+}
 
 export default function InboxPage() {
   const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus } = useStore();
   const [body, setBody] = useState("");
   const [note, setNote] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]>("all");
 
   const conversations = useMemo(() => {
-    return state.conversations.filter((conversation) => {
-      const contact = state.contacts.find((item) => item.id === conversation.contactId);
-      const matchesSearch = [
-        contact?.name,
-        contact?.phone,
-        contact?.company,
-        conversation.subject,
-        conversation.lastMessagePreview,
-        ...conversation.labels
-      ]
+    return state.conversations.filter((c) => {
+      const contact = state.contacts.find((x) => x.id === c.contactId);
+      const matchesQuery = !query.trim() || [contact?.name, contact?.phone, c.lastMessagePreview]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(search.toLowerCase()));
-
-      const matchesStatus = statusFilter === "all" || conversation.status === statusFilter;
-      return matchesSearch && matchesStatus;
+        .some((value) => String(value).toLowerCase().includes(query.toLowerCase()));
+      const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+      return matchesQuery && matchesStatus;
     });
-  }, [search, state.contacts, state.conversations, statusFilter]);
+  }, [query, state.contacts, state.conversations, statusFilter]);
 
   const selected = useMemo(
     () => conversations.find((c) => c.id === selectedConversationId) ?? conversations[0] ?? state.conversations[0],
@@ -44,228 +35,179 @@ export default function InboxPage() {
   );
 
   const selectedContact = state.contacts.find((c) => c.id === selected?.contactId);
-  const assignedAgent = state.team.find((member) => member.id === selected?.assignedTo);
-
-  const quickReplies = [
-    "Thanks — I’m checking that for you now.",
-    "I can send a quote through shortly.",
-    "Please share your area so I can confirm delivery.",
-    "Noted. I’ll hand this to the team and update you shortly."
-  ];
-
-  const queueStats = {
-    total: state.conversations.length,
-    unread: state.conversations.reduce((sum, conversation) => sum + conversation.unreadCount, 0),
-    whatsapp: state.conversations.filter((conversation) => conversation.channel === "whatsapp").length,
-    open: state.conversations.filter((conversation) => conversation.status === "open" || conversation.status === "new").length
-  };
+  const activeCount = state.conversations.filter((c) => c.status !== "closed").length;
+  const awaitingCount = state.conversations.filter((c) => c.status === "pending").length;
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-col gap-3 rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+    <div className="grid gap-4 md:gap-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="text-xl font-semibold">Kryvexis Inbox System</div>
-          <div className="mt-1 text-sm text-neutral-500">Meta-ready conversation workspace for WhatsApp, web enquiries, and internal follow-up.</div>
+          <div className="text-2xl font-semibold tracking-tight">Inbox</div>
+          <div className="mt-1 text-sm text-neutral-500">Keep customer conversations focused, clear, and easy to action.</div>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"><div className="text-neutral-500">Queue</div><div className="font-semibold">{queueStats.total}</div></div>
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"><div className="text-neutral-500">Unread</div><div className="font-semibold">{queueStats.unread}</div></div>
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"><div className="text-neutral-500">WhatsApp</div><div className="font-semibold">{queueStats.whatsapp}</div></div>
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm"><div className="text-neutral-500">Active</div><div className="font-semibold">{queueStats.open}</div></div>
+        <div className="grid grid-cols-2 gap-3 md:flex">
+          <div className="kx-card2 p-3 md:w-36">
+            <div className="text-xs text-neutral-500">Active</div>
+            <div className="mt-1 text-xl font-semibold">{activeCount}</div>
+          </div>
+          <div className="kx-card2 p-3 md:w-36">
+            <div className="text-xs text-neutral-500">Awaiting</div>
+            <div className="mt-1 text-xl font-semibold">{awaitingCount}</div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)_320px]">
-        <div className="kx-card2 overflow-hidden">
-          <div className="border-b border-neutral-200 p-4">
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 px-3 py-2">
-              <Search size={16} className="text-neutral-400" />
-              <input className="w-full bg-transparent text-sm outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search contacts, labels, or messages" />
-            </div>
-            <div className="mt-3 flex items-center gap-2 overflow-auto pb-1 text-xs">
-              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-1 text-neutral-500"><Filter size={12} /> Queue</span>
-              {(["all", "new", "open", "waiting", "resolved"] as const).map((value) => (
+      <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+        <section className="kx-card2 overflow-hidden">
+          <div className="border-b border-neutral-200 p-3">
+            <input
+              className="kx-input"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search conversations"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {statusOptions.map((option) => (
                 <button
-                  key={value}
-                  className={statusFilter === value ? "rounded-full bg-black px-3 py-1.5 text-white" : "rounded-full border border-neutral-200 px-3 py-1.5 text-neutral-600"}
-                  onClick={() => setStatusFilter(value)}
+                  key={option}
+                  onClick={() => setStatusFilter(option)}
+                  className={statusFilter === option ? "kx-badge bg-black text-white" : "kx-badge"}
                 >
-                  {value === "all" ? "All" : statusLabels[value]}
+                  {option === "all" ? "All" : statusLabel(option)}
                 </button>
               ))}
             </div>
           </div>
-
-          <div className="max-h-[72vh] overflow-auto">
-            {conversations.map((conversation) => {
-              const contact = state.contacts.find((item) => item.id === conversation.contactId);
-              const active = selected?.id === conversation.id;
+          <div className="max-h-[68vh] overflow-auto">
+            {conversations.map((c) => {
+              const contact = state.contacts.find((x) => x.id === c.contactId);
+              const active = selected?.id === c.id;
               return (
                 <button
-                  key={conversation.id}
-                  onClick={() => setSelectedConversationId(conversation.id)}
+                  key={c.id}
+                  onClick={() => setSelectedConversationId(c.id)}
                   className={active ? "block w-full border-b border-neutral-100 bg-neutral-50 p-4 text-left" : "block w-full border-b border-neutral-100 p-4 text-left hover:bg-neutral-50"}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate font-medium">{contact?.name ?? "Unknown contact"}</div>
-                      <div className="mt-0.5 truncate text-xs text-neutral-500">{contact?.company ?? conversation.subject}</div>
+                      <div className="truncate font-medium">{contact?.name ?? "Unknown customer"}</div>
+                      <div className="mt-1 truncate text-sm text-neutral-500">{c.lastMessagePreview}</div>
                     </div>
-                    {conversation.unreadCount > 0 ? <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">{conversation.unreadCount}</span> : null}
-                  </div>
-                  <div className="mt-2 line-clamp-2 text-sm text-neutral-600">{conversation.lastMessagePreview}</div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                    <span className="kx-badge">{statusLabels[conversation.status]}</span>
-                    <span className="kx-badge">{conversation.channel}</span>
-                    {conversation.priority === "high" ? <span className="kx-badge border-amber-200 text-amber-700">Priority</span> : null}
+                    <div className="text-right text-xs text-neutral-400">
+                      <div>{new Date(c.updatedAt).toLocaleDateString()}</div>
+                      <div className="mt-2"><span className="kx-badge">{statusLabel(c.status)}</span></div>
+                    </div>
                   </div>
                 </button>
               );
             })}
+            {!conversations.length ? (
+              <div className="p-5 text-sm text-neutral-500">No conversations match your search.</div>
+            ) : null}
           </div>
-        </div>
+        </section>
 
-        <div className="kx-card2 overflow-hidden">
-          <div className="border-b border-neutral-200 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-semibold">{selectedContact?.name ?? "Select conversation"}</div>
-                <div className="mt-1 text-xs text-neutral-500">{selectedContact?.phone ?? "No contact selected"}</div>
-              </div>
-              {selected ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="kx-badge">{selected.channel}</span>
+        <section className="grid gap-4">
+          <div className="kx-card2 overflow-hidden">
+            <div className="border-b border-neutral-200 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="text-base font-semibold">{selectedContact?.name ?? "Select a conversation"}</div>
+                  <div className="mt-1 text-sm text-neutral-500">{selectedContact?.phone ?? "Choose a conversation from the list"}</div>
+                </div>
+                {selected ? (
                   <select
                     className="rounded-xl border border-neutral-200 px-3 py-2 text-sm"
                     value={selected.status}
-                    onChange={(e) => updateStatus(selected.id, e.target.value as Conversation["status"])}
+                    onChange={(e) => updateStatus(selected.id, e.target.value as "open" | "pending" | "closed")}
                   >
-                    <option value="new">New</option>
                     <option value="open">Open</option>
-                    <option value="waiting">Awaiting customer</option>
-                    <option value="resolved">Resolved</option>
+                    <option value="pending">Awaiting customer</option>
+                    <option value="closed">Resolved</option>
                   </select>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          </div>
 
-          <div className="max-h-[58vh] overflow-auto bg-neutral-50/60 p-4 space-y-3">
-            {selected?.messages.map((message) => (
-              <div
-                key={message.id}
-                className={message.direction === "outbound"
-                  ? "ml-auto max-w-[88%] rounded-3xl border border-black bg-black p-3 text-sm text-white sm:max-w-[78%]"
-                  : message.direction === "internal"
-                    ? "mx-auto max-w-[92%] rounded-3xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:max-w-[84%]"
-                    : "max-w-[88%] rounded-3xl border border-neutral-200 bg-white p-3 text-sm sm:max-w-[78%]"}
-              >
-                <div>{message.body}</div>
-                <div className={message.direction === "outbound" ? "mt-2 flex items-center gap-2 text-xs text-white/70" : "mt-2 flex items-center gap-2 text-xs text-neutral-500"}>
-                  <span>{new Date(message.createdAt).toLocaleString()}</span>
-                  {message.direction === "outbound" ? (
-                    <span className="inline-flex items-center gap-1"><CheckCheck size={12} /> {message.deliveryState ?? "sent"}</span>
-                  ) : null}
-                  {message.author ? <span>• {message.author}</span> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {selected ? (
-            <div className="border-t border-neutral-200 p-4">
-              <div className="mb-3 flex flex-wrap gap-2">
-                {quickReplies.map((reply) => (
-                  <button key={reply} className="rounded-full border border-neutral-200 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-50" onClick={() => setBody(reply)}>
-                    {reply}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  className="kx-input"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="Write a customer reply"
-                />
-                <button
-                  className="kx-btn kx-btn-primary"
-                  onClick={() => {
-                    sendMessage(selected.id, body);
-                    setBody("");
-                  }}
+            <div className="max-h-[52vh] space-y-3 overflow-auto p-4">
+              {selected?.messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={m.direction === "outbound"
+                    ? "ml-auto max-w-[84%] rounded-2xl bg-black p-3 text-sm text-white"
+                    : "max-w-[84%] rounded-2xl border border-neutral-200 bg-white p-3 text-sm"}
                 >
-                  Send
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="space-y-4">
-          <div className="kx-card2 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium">Conversation details</div>
-              {selected?.priority === "high" ? <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">High priority</span> : null}
-            </div>
-            <div className="mt-3 space-y-2 text-sm">
-              <div><span className="text-neutral-500">Customer:</span> {selectedContact?.name ?? "—"}</div>
-              <div><span className="text-neutral-500">Company:</span> {selectedContact?.company ?? "—"}</div>
-              <div><span className="text-neutral-500">Assigned:</span> {assignedAgent?.name ?? "Unassigned"}</div>
-              <div><span className="text-neutral-500">Source:</span> {selected?.channel ?? "—"}</div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selected?.labels.map((label) => (
-                <span key={label} className="kx-badge inline-flex items-center gap-1"><Tags size={12} /> {label}</span>
-              ))}
-            </div>
-          </div>
-
-          <div className="kx-card2 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium"><MessageSquareShare size={16} /> Channel readiness</div>
-            <div className="mt-3 space-y-3 text-sm text-neutral-600">
-              <div className="rounded-2xl border border-neutral-200 p-3">
-                <div className="font-medium text-neutral-900">WhatsApp-ready inbox</div>
-                <div className="mt-1">Conversation cards already support source labels, unread counts, quick replies, and delivery states.</div>
-              </div>
-              <div className="rounded-2xl border border-neutral-200 p-3">
-                <div className="font-medium text-neutral-900">Webhook-friendly message thread</div>
-                <div className="mt-1">Each message row now has channel and delivery-state fields ready for Meta webhook events later.</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="kx-card2 p-4">
-            <div className="text-sm font-medium">Internal notes</div>
-            <div className="mt-3 space-y-2">
-              {selected?.notes.map((entry) => (
-                <div key={entry.id} className="rounded-2xl border border-neutral-200 p-3 text-sm">
-                  <div>{entry.body}</div>
-                  <div className="mt-1 text-xs text-neutral-500">{new Date(entry.createdAt).toLocaleString()}</div>
+                  <div>{m.body}</div>
+                  <div className={m.direction === "outbound" ? "mt-1 text-xs text-white/70" : "mt-1 text-xs text-neutral-500"}>
+                    {new Date(m.createdAt).toLocaleString()}
+                  </div>
                 </div>
               ))}
             </div>
+
             {selected ? (
-              <div className="mt-3 flex gap-2">
-                <input className="kx-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add internal note" />
-                <button
-                  className="kx-btn kx-btn-ghost border border-neutral-200"
-                  onClick={() => {
-                    addNote(selected.id, note);
-                    setNote("");
-                  }}
-                >
-                  Add
-                </button>
+              <div className="border-t border-neutral-200 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    className="kx-input"
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    placeholder="Write a reply"
+                  />
+                  <button
+                    className="kx-btn kx-btn-primary"
+                    onClick={() => {
+                      sendMessage(selected.id, body);
+                      setBody("");
+                    }}
+                  >
+                    Send
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>
 
-          <div className="kx-card2 p-4 text-sm text-neutral-600">
-            <div className="flex items-center gap-2 font-medium text-neutral-900"><CircleDot size={16} /> Mobile-friendly operator flow</div>
-            <div className="mt-2">On smaller screens the queue, thread, and detail cards stack cleanly so operators can still respond without table-heavy layouts.</div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="kx-card2 p-4">
+              <div className="text-sm font-semibold">Customer details</div>
+              <div className="mt-3 space-y-2 text-sm text-neutral-600">
+                <div><span className="text-neutral-400">Name:</span> {selectedContact?.name ?? "—"}</div>
+                <div><span className="text-neutral-400">Phone:</span> {selectedContact?.phone ?? "—"}</div>
+                <div><span className="text-neutral-400">Email:</span> {selectedContact?.email ?? "—"}</div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedContact?.tags.map((tag) => <span key={tag} className="kx-badge">{tag}</span>)}
+              </div>
+            </div>
+
+            <div className="kx-card2 p-4">
+              <div className="text-sm font-semibold">Notes</div>
+              <div className="mt-3 space-y-2">
+                {selected?.notes.length ? selected.notes.map((n) => (
+                  <div key={n.id} className="rounded-2xl border border-neutral-200 p-3 text-sm">
+                    <div>{n.body}</div>
+                    <div className="mt-1 text-xs text-neutral-500">{new Date(n.createdAt).toLocaleString()}</div>
+                  </div>
+                )) : <div className="text-sm text-neutral-500">No notes yet.</div>}
+              </div>
+              {selected ? (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input className="kx-input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Add note" />
+                  <button
+                    className="kx-btn kx-btn-ghost border border-neutral-200"
+                    onClick={() => {
+                      addNote(selected.id, note);
+                      setNote("");
+                    }}
+                  >
+                    Save note
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

@@ -1,13 +1,10 @@
 import type { AppState } from "./types";
 
-const now = new Date();
-const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
-
 export const seedState: AppState = {
   contacts: [
-    { id: "c1", name: "Sipho M.", phone: "+27 68 628 2874", email: "sipho@example.com", company: "Sipho Retail", tags: ["lead", "priority"] },
-    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", company: "LK Events", tags: ["paid", "repeat"] },
-    { id: "c3", name: "Ahmed D.", phone: "+27 61 999 2201", email: "ahmed@example.com", company: "Apex Supplies", tags: ["lead"] }
+    { id: "c1", name: "Sipho M.", phone: "+27 68 628 2874", email: "sipho@example.com", tags: ["lead", "priority"] },
+    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", tags: ["paid"] },
+    { id: "c3", name: "Ahmed D.", phone: "+27 61 999 2201", email: "ahmed@example.com", tags: ["lead"] }
   ],
   conversations: [
     {
@@ -15,62 +12,34 @@ export const seedState: AppState = {
       contactId: "c1",
       status: "open",
       assignedTo: "t2",
-      subject: "Pricing and delivery request",
-      lastMessagePreview: "Sure — here are our current package options.",
-      updatedAt: hoursAgo(1),
-      unreadCount: 1,
-      channel: "whatsapp",
-      priority: "high",
-      labels: ["pricing", "delivery"],
+      subject: "Pricing inquiry",
+      lastMessagePreview: "Can you send prices?",
+      updatedAt: new Date().toISOString(),
       messages: [
-        { id: "m1", direction: "inbound", body: "Hi 👋 can you send your prices and delivery options?", createdAt: hoursAgo(2), channel: "whatsapp", deliveryState: "read" },
-        { id: "m2", direction: "outbound", body: "Sure — here are our current package options.", createdAt: hoursAgo(1), channel: "whatsapp", deliveryState: "delivered", author: "Nomsa" }
+        { id: "m1", direction: "inbound", body: "Hi 👋 can you send your prices?", createdAt: new Date().toISOString() },
+        { id: "m2", direction: "outbound", body: "Sure — here are our packages.", createdAt: new Date().toISOString() }
       ],
       notes: [
-        { id: "n1", body: "High-intent lead. Wants a same-day follow-up and quote.", createdAt: hoursAgo(1) }
+        { id: "n1", body: "Hot lead. Wants response today.", createdAt: new Date().toISOString() }
       ]
     },
     {
       id: "v2",
       contactId: "c2",
-      status: "waiting",
+      status: "pending",
       assignedTo: "t3",
       subject: "Invoice follow-up",
-      lastMessagePreview: "Please resend my invoice.",
-      updatedAt: hoursAgo(5),
-      unreadCount: 0,
-      channel: "whatsapp",
-      priority: "normal",
-      labels: ["invoice", "returning customer"],
+      lastMessagePreview: "Please resend invoice",
+      updatedAt: new Date().toISOString(),
       messages: [
-        { id: "m3", direction: "inbound", body: "Please resend my invoice when you can.", createdAt: hoursAgo(6), channel: "whatsapp", deliveryState: "read" },
-        { id: "m4", direction: "outbound", body: "Resending now. Let me know once it reaches you.", createdAt: hoursAgo(5), channel: "whatsapp", deliveryState: "read", author: "Mpho" }
+        { id: "m3", direction: "inbound", body: "Please resend my invoice.", createdAt: new Date().toISOString() }
       ],
       notes: []
-    },
-    {
-      id: "v3",
-      contactId: "c3",
-      status: "new",
-      assignedTo: "t2",
-      subject: "Quote request from web form",
-      lastMessagePreview: "I need a quote for 10 units this week.",
-      updatedAt: hoursAgo(0.4),
-      unreadCount: 2,
-      channel: "web",
-      priority: "high",
-      labels: ["quote", "new lead"],
-      messages: [
-        { id: "m5", direction: "inbound", body: "I need a quote for 10 units this week.", createdAt: hoursAgo(0.5), channel: "web", deliveryState: "read" }
-      ],
-      notes: [
-        { id: "n2", body: "Move to WhatsApp once quote is approved.", createdAt: hoursAgo(0.4) }
-      ]
     }
   ],
   rules: [
-    { id: "r1", name: "Price Auto-Reply", keyword: "price", autoReply: "Thanks for reaching out. I can send our latest pricing options right away.", enabled: true },
-    { id: "r2", name: "Delivery Auto-Reply", keyword: "deliver", autoReply: "Yes, we deliver. Please share your area and preferred delivery date.", enabled: true }
+    { id: "r1", name: "Price Auto-Reply", keyword: "price", autoReply: "Here are our latest prices and packages.", enabled: true },
+    { id: "r2", name: "Delivery Auto-Reply", keyword: "deliver", autoReply: "Yes, we deliver. Please share your area.", enabled: true }
   ],
   quotes: [
     { id: "q1", customer: "Sipho M.", amount: 2499, status: "sent" },

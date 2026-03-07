@@ -1,14 +1,10 @@
-export type Status = "new" | "open" | "waiting" | "resolved";
-export type Channel = "whatsapp" | "web" | "manual";
-export type Priority = "normal" | "high";
-export type DeliveryState = "sent" | "delivered" | "read" | "internal";
+export type Status = "open" | "pending" | "closed";
 
 export type Contact = {
   id: string;
   name: string;
   phone: string;
   email?: string;
-  company?: string;
   tags: string[];
 };
 
@@ -17,9 +13,6 @@ export type Message = {
   direction: "inbound" | "outbound" | "internal";
   body: string;
   createdAt: string;
-  channel?: Channel;
-  deliveryState?: DeliveryState;
-  author?: string;
 };
 
 export type Note = {
@@ -36,10 +29,6 @@ export type Conversation = {
   subject: string;
   lastMessagePreview: string;
   updatedAt: string;
-  unreadCount: number;
-  channel: Channel;
-  priority: Priority;
-  labels: string[];
   messages: Message[];
   notes: Note[];
 };

@@ -10,49 +10,49 @@ export default function AutomationsPage() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-xl font-semibold">Automations</div>
-          <div className="text-sm text-neutral-500">Keyword triggers for instant replies.</div>
-        </div>
-
-        <div className="flex gap-2">
-          <input className="kx-input" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="keyword (e.g. price)" />
-          <input className="kx-input" value={autoReply} onChange={(e) => setAutoReply(e.target.value)} placeholder="auto reply text" />
-          <button
-            className="kx-btn kx-btn-primary"
-            onClick={() => {
-              addRule(keyword, autoReply);
-              setKeyword("");
-              setAutoReply("");
-            }}
-          >
-            Add rule
-          </button>
-        </div>
+      <div>
+        <div className="text-2xl font-semibold tracking-tight">Automations</div>
+        <div className="mt-1 text-sm text-neutral-500">Create simple rules for common customer questions.</div>
       </div>
 
-      <div className="kx-card2 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-neutral-600">
-            <tr>
-              <th className="p-3 text-left font-medium">Name</th>
-              <th className="p-3 text-left font-medium">Keyword</th>
-              <th className="p-3 text-left font-medium">Auto reply</th>
-              <th className="p-3 text-left font-medium">Enabled</th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="kx-card2 p-4">
+          <div className="text-sm font-semibold">Active rules</div>
+          <div className="mt-4 grid gap-3">
             {state.rules.map((r) => (
-              <tr key={r.id} className="border-t border-neutral-100">
-                <td className="p-3">{r.name}</td>
-                <td className="p-3"><span className="kx-badge">{r.keyword}</span></td>
-                <td className="p-3">{r.autoReply}</td>
-                <td className="p-3">{r.enabled ? "Yes" : "No"}</td>
-              </tr>
+              <div key={r.id} className="rounded-2xl border border-neutral-200 p-4">
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <div className="font-medium">{r.name}</div>
+                    <div className="mt-1 text-sm text-neutral-500">Reply: {r.autoReply}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="kx-badge">{r.keyword}</span>
+                    <span className="kx-badge">{r.enabled ? "Enabled" : "Paused"}</span>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </div>
+
+        <div className="kx-card2 p-4">
+          <div className="text-sm font-semibold">Add rule</div>
+          <div className="mt-3 grid gap-3">
+            <input className="kx-input" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Keyword" />
+            <input className="kx-input" value={autoReply} onChange={(e) => setAutoReply(e.target.value)} placeholder="Auto reply" />
+            <button
+              className="kx-btn kx-btn-primary"
+              onClick={() => {
+                addRule(keyword, autoReply);
+                setKeyword("");
+                setAutoReply("");
+              }}
+            >
+              Save rule
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { seedState } from "@/lib/seed";
-import type { AppState, Channel, Contact, Conversation, Message, Product, Quote, Rule } from "@/lib/types";
+import type { AppState, Conversation, Rule, Contact, Quote, Product, Message } from "@/lib/types";
 
 type Store = {
   state: AppState;
@@ -24,36 +24,6 @@ function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
 }
 
-function normalizeState(input: AppState): AppState {
-  return {
-    ...input,
-    contacts: input.contacts.map((contact) => ({
-      ...contact,
-      company: contact.company ?? undefined,
-      tags: Array.isArray(contact.tags) ? contact.tags : []
-    })),
-    conversations: input.conversations.map((conversation) => ({
-      ...conversation,
-      status: conversation.status ?? "open",
-      unreadCount: typeof conversation.unreadCount === "number" ? conversation.unreadCount : 0,
-      channel: conversation.channel ?? "manual",
-      priority: conversation.priority ?? "normal",
-      labels: Array.isArray(conversation.labels) ? conversation.labels : [],
-      messages: conversation.messages.map((message) => ({
-        ...message,
-        channel: message.channel ?? conversation.channel ?? "manual",
-        deliveryState:
-          message.deliveryState ?? (message.direction === "outbound" ? "sent" : message.direction === "internal" ? "internal" : "read")
-      })),
-      notes: Array.isArray(conversation.notes) ? conversation.notes : []
-    })),
-    rules: input.rules,
-    quotes: input.quotes,
-    products: input.products,
-    team: input.team
-  };
-}
-
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(seedState);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(seedState.conversations[0]?.id ?? null);
@@ -62,7 +32,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {
-        const parsed = normalizeState(JSON.parse(raw) as AppState);
+        const parsed = JSON.parse(raw) as AppState;
         setState(parsed);
         setSelectedConversationId(parsed.conversations[0]?.id ?? null);
       }
@@ -76,9 +46,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [state]);
 
   function sendMessage(conversationId: string, body: string) {
-    const cleaned = body.trim();
-    if (!cleaned) return;
-
+    if (!body.trim()) return;
     setState((prev) => ({
       ...prev,
       conversations: prev.conversations.map((c) => {
@@ -86,65 +54,49 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const msg: Message = {
           id: uid("m"),
           direction: "outbound",
-          body: cleaned,
+          body,
           createdAt: new Date().toISOString(),
-          channel: c.channel,
-          deliveryState: "sent",
-          author: prev.team.find((member) => member.id === c.assignedTo)?.name ?? "Agent"
         };
         return {
           ...c,
-          status: "waiting",
-          unreadCount: 0,
-          lastMessagePreview: cleaned,
-          updatedAt: msg.createdAt,
-          messages: [...c.messages, msg]
+          lastMessagePreview: body,
+          updatedAt: new Date().toISOString(),
+          messages: [...c.messages, msg],
         };
-      })
+      }),
     }));
   }
 
   function addNote(conversationId: string, body: string) {
-    const cleaned = body.trim();
-    if (!cleaned) return;
+    if (!body.trim()) return;
     setState((prev) => ({
       ...prev,
       conversations: prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
-        const note = { id: uid("n"), body: cleaned, createdAt: new Date().toISOString() };
+        const note = { id: uid("n"), body, createdAt: new Date().toISOString() };
         return { ...c, notes: [note, ...c.notes] };
-      })
+      }),
     }));
   }
 
   function updateStatus(conversationId: string, status: Conversation["status"]) {
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) =>
-        c.id === conversationId
-          ? {
-              ...c,
-              status,
-              unreadCount: status === "resolved" ? 0 : c.unreadCount
-            }
-          : c
-      )
+      conversations: prev.conversations.map((c) => (c.id === conversationId ? { ...c, status } : c)),
     }));
   }
 
   function injectLead() {
     const names = ["Zanele S.", "Thabo P.", "Ayesha N.", "Gift M.", "Lebo T."];
     const texts = [
-      "Hi 👋 can you send your prices?",
+      "Hi, can you send your prices?",
       "Do you deliver in my area?",
       "I want a quote please.",
       "Can someone call me back?",
-      "How long does shipping take?"
+      "How long does shipping take?",
     ];
-    const sources: Channel[] = ["whatsapp", "web", "manual"];
     const name = names[Math.floor(Math.random() * names.length)];
     const text = texts[Math.floor(Math.random() * texts.length)];
-    const channel = sources[Math.floor(Math.random() * sources.length)];
     const contactId = uid("c");
     const convoId = uid("v");
     const phone = "+27 " + Math.floor(60 + Math.random() * 20) + " " + Math.floor(1000000 + Math.random() * 8999999);
@@ -153,42 +105,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const matched = state.rules.find((r) => r.enabled && text.toLowerCase().includes(r.keyword.toLowerCase()));
     if (matched) autoReply = matched.autoReply;
 
-    const contact: Contact = { id: contactId, name, phone, company: "New enquiry", tags: ["lead"] };
-    const messages: Conversation["messages"] = [
-      { id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString(), channel, deliveryState: "read" }
-    ];
+    const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
+    const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString() }];
     if (autoReply) {
-      messages.push({
-        id: uid("m"),
-        direction: "outbound",
-        body: autoReply,
-        createdAt: new Date().toISOString(),
-        channel,
-        deliveryState: "sent",
-        author: "Automation"
-      });
+      messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString() });
     }
 
     const convo: Conversation = {
       id: convoId,
       contactId,
-      status: autoReply ? "waiting" : "new",
+      status: "open",
       assignedTo: "t2",
-      subject: channel === "whatsapp" ? "WhatsApp enquiry" : channel === "web" ? "Web enquiry" : "Manual conversation",
+      subject: "New lead",
       lastMessagePreview: autoReply ?? text,
       updatedAt: new Date().toISOString(),
-      unreadCount: autoReply ? 0 : 1,
-      channel,
-      priority: autoReply ? "normal" : "high",
-      labels: [channel, autoReply ? "auto-replied" : "new lead"],
       messages,
-      notes: []
+      notes: [],
     };
 
     setState((prev) => ({
       ...prev,
       contacts: [contact, ...prev.contacts],
-      conversations: [convo, ...prev.conversations]
+      conversations: [convo, ...prev.conversations],
     }));
     setSelectedConversationId(convoId);
   }
@@ -200,7 +138,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       name: `Keyword: ${keyword}`,
       keyword,
       autoReply,
-      enabled: true
+      enabled: true,
     };
     setState((prev) => ({ ...prev, rules: [rule, ...prev.rules] }));
   }
@@ -217,21 +155,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, products: [product, ...prev.products] }));
   }
 
-  const value = useMemo<Store>(
-    () => ({
-      state,
-      selectedConversationId,
-      setSelectedConversationId,
-      sendMessage,
-      injectLead,
-      addRule,
-      addNote,
-      updateStatus,
-      addQuote,
-      addProduct
-    }),
-    [state, selectedConversationId]
-  );
+  const value = useMemo<Store>(() => ({
+    state,
+    selectedConversationId,
+    setSelectedConversationId,
+    sendMessage,
+    injectLead,
+    addRule,
+    addNote,
+    updateStatus,
+    addQuote,
+    addProduct,
+  }), [state, selectedConversationId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
