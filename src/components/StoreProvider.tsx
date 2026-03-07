@@ -51,11 +51,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       conversations: prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
-        const msg: Message = { id: uid("m"), direction: "outbound", body, createdAt: new Date().toISOString() };
+        const msg: Message = {
+          id: uid("m"),
+          direction: "outbound",
+          body,
+          createdAt: new Date().toISOString(),
+          channel: c.channel,
+          author: "Agent",
+          deliveryState: c.channel === "whatsapp" ? "sent" : undefined,
+        };
         return {
           ...c,
           lastMessagePreview: body,
           updatedAt: new Date().toISOString(),
+          status: c.status === "new" ? "open" : c.status,
           messages: [...c.messages, msg]
         };
       })
@@ -101,21 +110,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (matched) autoReply = matched.autoReply;
 
     const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
-    const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString() }];
+    const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString(), channel: "whatsapp", author: name }];
     if (autoReply) {
-      messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString() });
+      messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString(), channel: "whatsapp", author: "Agent", deliveryState: "sent" });
     }
 
     const convo: Conversation = {
       id: convoId,
       contactId,
-      status: "open",
+      status: "new",
       assignedTo: "t2",
-      subject: "New lead",
+      subject: "New WhatsApp lead",
       lastMessagePreview: autoReply ?? text,
       updatedAt: new Date().toISOString(),
       messages,
-      notes: []
+      notes: [],
+      channel: "whatsapp",
+      unreadCount: 1,
+      priority: "medium",
+      labels: ["new lead"]
     };
 
     setState((prev) => ({
