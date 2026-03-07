@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { seedState } from "@/lib/seed";
-import type { AppState, Conversation, Rule, Contact, Quote, Product, Message } from "@/lib/types";
+import type { AppState, Conversation, Rule, Contact, Quote, Product, Message, MetaInboundRecord } from "@/lib/types";
 
 type Store = {
   state: AppState;
@@ -22,6 +22,78 @@ const KEY = "kryvexis_showcase_state_v1";
 
 function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
+}
+
+function normalisePhone(input: string) {
+  const digits = input.replace(/\D/g, "");
+  if (digits.startsWith("27")) return digits;
+  if (digits.startsWith("0")) return `27${digits.slice(1)}`;
+  return digits;
+}
+
+function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): AppState {
+  if (!incoming.length) return prev;
+
+  let contacts = [...prev.contacts];
+  let conversations = [...prev.conversations];
+
+  for (const item of incoming) {
+    const phone = normalisePhone(item.phone);
+    let contact = contacts.find((c) => normalisePhone(c.phone) === phone);
+    if (!contact) {
+      contact = {
+        id: uid("c"),
+        name: item.contact_name?.trim() || phone,
+        phone: phone.startsWith("27") ? `+${phone}` : item.phone,
+        tags: ["whatsapp"],
+      };
+      contacts = [contact, ...contacts];
+    }
+
+    const existingConversation = conversations.find((c) => c.contactId === contact!.id && c.channel === "whatsapp");
+    const inboundMessage: Message = {
+      id: item.wamid || uid("m"),
+      direction: "inbound",
+      body: item.body,
+      createdAt: item.received_at,
+      channel: "whatsapp",
+      author: item.contact_name?.trim() || contact.name,
+    };
+
+    if (existingConversation) {
+      if (existingConversation.messages.some((m) => m.id === inboundMessage.id)) continue;
+      conversations = conversations.map((c) => c.id === existingConversation.id ? {
+        ...c,
+        status: c.status === "resolved" ? "open" : c.status === "awaiting_customer" ? "open" : c.status,
+        updatedAt: item.received_at,
+        lastMessagePreview: item.body,
+        unreadCount: c.unreadCount + 1,
+        messages: [...c.messages, inboundMessage],
+      } : c);
+      continue;
+    }
+
+    const subjectName = item.contact_name?.trim() || contact.name;
+    const newConversation: Conversation = {
+      id: uid("v"),
+      contactId: contact.id,
+      status: "new",
+      assignedTo: undefined,
+      subject: `WhatsApp conversation · ${subjectName}` ,
+      lastMessagePreview: item.body,
+      updatedAt: item.received_at,
+      messages: [inboundMessage],
+      notes: [],
+      channel: "whatsapp",
+      unreadCount: 1,
+      priority: "medium",
+      labels: ["whatsapp", "live inbound"],
+    };
+    conversations = [newConversation, ...conversations];
+  }
+
+  conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  return { ...prev, contacts, conversations };
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -44,6 +116,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch {}
   }, [state]);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncIncoming() {
+      try {
+        const response = await fetch("/api/meta/incoming", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        const incoming = Array.isArray(payload?.messages) ? payload.messages as MetaInboundRecord[] : [];
+        if (!incoming.length || cancelled) return;
+
+        setState((prev) => mergeIncomingMessages(prev, incoming));
+        if (incoming.length) {
+          const ids = incoming.map((item) => item.id).filter(Boolean);
+          if (ids.length) {
+            await fetch("/api/meta/incoming/ack", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids }),
+            });
+          }
+        }
+      } catch {}
+    }
+
+    syncIncoming();
+    const interval = window.setInterval(syncIncoming, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   function sendMessage(conversationId: string, body: string) {
     if (!body.trim()) return;

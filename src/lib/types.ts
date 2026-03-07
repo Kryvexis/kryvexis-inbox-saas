@@ -80,6 +80,16 @@ export type MetaConnectionState = {
   webhookPath: string;
 };
 
+export type MetaInboundRecord = {
+  id: string;
+  phone: string;
+  contact_name?: string | null;
+  body: string;
+  received_at: string;
+  wamid?: string;
+  metadata?: Record<string, unknown>;
+};
+
 export type AppState = {
   contacts: Contact[];
   conversations: Conversation[];

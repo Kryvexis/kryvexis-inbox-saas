@@ -73,3 +73,8 @@ export function normaliseSouthAfricanNumber(input: string) {
   if (digits.startsWith("0")) return `27${digits.slice(1)}`;
   return digits;
 }
+
+
+export function normaliseIncomingMetaNumber(input: string) {
+  return normaliseSouthAfricanNumber(input || "");
+}

@@ -50,7 +50,7 @@ export default function InboxPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xl font-semibold">Inbox</div>
-          <div className="text-sm text-neutral-500">Manage WhatsApp, web, and manual conversations from one workspace.</div>
+          <div className="text-sm text-neutral-500">Manage live WhatsApp conversations, follow-up, and customer context from one workspace.</div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-sm md:w-[360px]">
           <div className="kx-card2 p-3"><div className="text-neutral-500">New</div><div className="mt-1 text-xl font-semibold">{queueCounts.newCount}</div></div>
@@ -95,7 +95,7 @@ export default function InboxPage() {
                 </button>
               );
             })}
-            {!filteredConversations.length ? <div className="p-4 text-sm text-neutral-500">No conversations match the current filter.</div> : null}
+            {!filteredConversations.length ? <div className="p-4 text-sm text-neutral-500">No conversations match the current filter yet.</div> : null}
           </div>
         </div>
 

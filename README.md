@@ -51,3 +51,8 @@ This project includes:
 - `META_PHONE_NUMBER_ID`
 - `META_BUSINESS_ACCOUNT_ID` (optional)
 - `META_WEBHOOK_VERIFY_TOKEN`
+
+
+## Real incoming Meta message handling
+
+Apply `supabase/meta_incoming_messages.sql`, set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then redeploy. Incoming Meta webhook payloads are stored in `meta_incoming_messages` and polled into the Inbox UI every 10 seconds.
