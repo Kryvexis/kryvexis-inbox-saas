@@ -8,7 +8,7 @@ type Store = {
   state: AppState;
   selectedConversationId: string | null;
   setSelectedConversationId: (id: string | null) => void;
-  sendMessage: (conversationId: string, body: string) => Promise<void>;
+  sendMessage: (conversationId: string, body: string) => Promise<{ ok: boolean; messageId?: string; error?: string }>;
   injectLead: () => void;
   addRule: (keyword: string, autoReply: string) => void;
   addNote: (conversationId: string, body: string) => void;
@@ -151,13 +151,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   async function sendMessage(conversationId: string, body: string) {
     const trimmed = body.trim();
-    if (!trimmed) return;
+    if (!trimmed) return { ok: false, error: "Message body is empty" };
 
     const conversation = state.conversations.find((c) => c.id === conversationId);
-    const contact = conversation ? state.contacts.find((c) => c.id === conversation.contactId) : undefined;
+    if (!conversation) {
+      return { ok: false, error: "Conversation not found" };
+    }
+
+    const contact = state.contacts.find((c) => c.id === conversation.contactId);
     const messageId = uid("m");
     const createdAt = new Date().toISOString();
-    const isWhatsApp = conversation?.channel === "whatsapp" && !!contact?.phone;
+    const isWhatsApp = conversation.channel === "whatsapp";
+    const normalisedTo = contact?.phone ? normalisePhone(contact.phone) : "";
 
     setState((prev) => ({
       ...prev,
@@ -170,32 +175,65 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           createdAt,
           channel: c.channel,
           author: "Agent",
-          deliveryState: isWhatsApp ? "pending" : undefined,
+          deliveryState: isWhatsApp ? "pending" : "sent",
         };
         return {
           ...c,
           lastMessagePreview: trimmed,
           updatedAt: createdAt,
+          unreadCount: 0,
           status: c.status === "new" ? "open" : c.status,
           messages: [...c.messages, msg],
         };
       }),
     }));
 
-    if (!isWhatsApp || !contact?.phone) {
-      return;
+    if (!isWhatsApp) {
+      return { ok: true, messageId };
+    }
+
+    if (!normalisedTo) {
+      const failureText = "Missing WhatsApp contact phone number";
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          const note = {
+            id: uid("n"),
+            body: `WhatsApp send failed: ${failureText}`,
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...c,
+            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
+            notes: [note, ...c.notes],
+          };
+        }),
+      }));
+      return { ok: false, messageId, error: failureText };
     }
 
     try {
       const response = await fetch("/api/meta/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: contact.phone, body: trimmed }),
+        body: JSON.stringify({
+          to: normalisedTo,
+          phone: normalisedTo,
+          body: trimmed,
+          text: trimmed,
+          conversationId,
+          messageId,
+        }),
       });
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        const errorText = typeof payload?.error === "string" ? payload.error : "Meta send failed";
+        const errorText = typeof payload?.error === "string"
+          ? payload.error
+          : typeof payload?.details === "string"
+            ? payload.details
+            : "Meta send failed";
         throw new Error(errorText);
       }
 
@@ -209,6 +247,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           };
         }),
       }));
+
+      return { ok: true, messageId };
     } catch (error) {
       const failureText = error instanceof Error ? error.message : "Meta send failed";
       setState((prev) => ({
@@ -227,6 +267,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           };
         }),
       }));
+      return { ok: false, messageId, error: failureText };
     }
   }
 

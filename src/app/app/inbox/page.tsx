@@ -18,6 +18,7 @@ function statusLabel(value: string) {
 export default function InboxPage() {
   const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus } = useStore();
   const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
   const [note, setNote] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]["value"]>("all");
@@ -154,12 +155,21 @@ export default function InboxPage() {
                 />
                 <button
                   className="kx-btn kx-btn-primary"
-                  onClick={() => {
-                    sendMessage(selected.id, body);
-                    setBody("");
+                  disabled={sending || !body.trim()}
+                  onClick={async () => {
+                    if (sending) return;
+                    setSending(true);
+                    try {
+                      const result = await sendMessage(selected.id, body);
+                      if (result.ok) {
+                        setBody("");
+                      }
+                    } finally {
+                      setSending(false);
+                    }
                   }}
                 >
-                  Send
+                  {sending ? "Sending..." : "Send"}
                 </button>
               </div>
             </div>
