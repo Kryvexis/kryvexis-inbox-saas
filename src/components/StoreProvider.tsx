@@ -8,7 +8,7 @@ type Store = {
   state: AppState;
   selectedConversationId: string | null;
   setSelectedConversationId: (id: string | null) => void;
-  sendMessage: (conversationId: string, body: string) => void;
+  sendMessage: (conversationId: string, body: string) => Promise<void>;
   injectLead: () => void;
   addRule: (keyword: string, autoReply: string) => void;
   addNote: (conversationId: string, body: string) => void;
@@ -149,30 +149,85 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  function sendMessage(conversationId: string, body: string) {
-    if (!body.trim()) return;
+  async function sendMessage(conversationId: string, body: string) {
+    const trimmed = body.trim();
+    if (!trimmed) return;
+
+    const conversation = state.conversations.find((c) => c.id === conversationId);
+    const contact = conversation ? state.contacts.find((c) => c.id === conversation.contactId) : undefined;
+    const messageId = uid("m");
+    const createdAt = new Date().toISOString();
+    const isWhatsApp = conversation?.channel === "whatsapp" && !!contact?.phone;
+
     setState((prev) => ({
       ...prev,
       conversations: prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
         const msg: Message = {
-          id: uid("m"),
+          id: messageId,
           direction: "outbound",
-          body,
-          createdAt: new Date().toISOString(),
+          body: trimmed,
+          createdAt,
           channel: c.channel,
           author: "Agent",
-          deliveryState: c.channel === "whatsapp" ? "sent" : undefined,
+          deliveryState: isWhatsApp ? "pending" : undefined,
         };
         return {
           ...c,
-          lastMessagePreview: body,
-          updatedAt: new Date().toISOString(),
+          lastMessagePreview: trimmed,
+          updatedAt: createdAt,
           status: c.status === "new" ? "open" : c.status,
-          messages: [...c.messages, msg]
+          messages: [...c.messages, msg],
         };
-      })
+      }),
     }));
+
+    if (!isWhatsApp || !contact?.phone) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/meta/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: contact.phone, body: trimmed }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const errorText = typeof payload?.error === "string" ? payload.error : "Meta send failed";
+        throw new Error(errorText);
+      }
+
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          return {
+            ...c,
+            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "sent" } : m),
+          };
+        }),
+      }));
+    } catch (error) {
+      const failureText = error instanceof Error ? error.message : "Meta send failed";
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          const note = {
+            id: uid("n"),
+            body: `WhatsApp send failed: ${failureText}`,
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...c,
+            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
+            notes: [note, ...c.notes],
+          };
+        }),
+      }));
+    }
   }
 
   function addNote(conversationId: string, body: string) {
