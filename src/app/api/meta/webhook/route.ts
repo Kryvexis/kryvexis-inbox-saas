@@ -64,19 +64,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true, stored: 0, warning: "Supabase admin not configured" });
   }
 
+  const payload: Record<string, unknown>[] = rows.map((row) => ({
+    wamid: row.wamid,
+    phone: row.phone,
+    contact_name: row.contactName,
+    body: row.body,
+    received_at: row.receivedAt,
+    metadata: row.metadata,
+  }));
+
   const { error } = await supabase
     .from("meta_incoming_messages")
-    .upsert(
-      rows.map((row) => ({
-        wamid: row.wamid,
-        phone: row.phone,
-        contact_name: row.contactName,
-        body: row.body,
-        received_at: row.receivedAt,
-        metadata: row.metadata,
-      })),
-      { onConflict: "wamid", ignoreDuplicates: false }
-    );
+    .upsert(payload as never, { onConflict: "wamid", ignoreDuplicates: false });
 
   if (error) {
     console.error("[meta-webhook] store failed", error.message);
