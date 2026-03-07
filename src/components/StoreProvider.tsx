@@ -8,7 +8,7 @@ type Store = {
   state: AppState;
   selectedConversationId: string | null;
   setSelectedConversationId: (id: string | null) => void;
-  sendMessage: (conversationId: string, body: string) => Promise<void>;
+  sendMessage: (conversationId: string, body: string) => void;
   injectLead: () => void;
   addRule: (keyword: string, autoReply: string) => void;
   addNote: (conversationId: string, body: string) => void;
@@ -149,89 +149,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function sendMessage(conversationId: string, body: string) {
-    const trimmed = body.trim();
-    if (!trimmed) return;
-
-    const messageId = uid("m");
-    const createdAt = new Date().toISOString();
-    let targetPhone: string | null = null;
-    let targetChannel: Conversation["channel"] | null = null;
-
-    setState((prev) => {
-      const conversation = prev.conversations.find((c) => c.id === conversationId) ?? null;
-      const contact = conversation ? prev.contacts.find((c) => c.id === conversation.contactId) ?? null : null;
-      targetPhone = contact?.phone ?? null;
-      targetChannel = conversation?.channel ?? null;
-
-      return {
-        ...prev,
-        conversations: prev.conversations.map((c) => {
-          if (c.id !== conversationId) return c;
-          const msg: Message = {
-            id: messageId,
-            direction: "outbound",
-            body: trimmed,
-            createdAt,
-            channel: c.channel,
-            author: "Agent",
-            deliveryState: c.channel === "whatsapp" ? "pending" : undefined,
-          };
-          return {
-            ...c,
-            lastMessagePreview: trimmed,
-            updatedAt: createdAt,
-            status: c.status === "new" ? "open" : c.status,
-            messages: [...c.messages, msg]
-          };
-        })
-      };
-    });
-
-    if (targetChannel !== "whatsapp" || !targetPhone) {
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/meta/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: targetPhone, body: trimmed }),
-      });
-
-      const payload = await response.json().catch(() => null);
-      const deliveryState: Message["deliveryState"] = response.ok ? "sent" : "failed";
-      const failureNote = !response.ok
-        ? (typeof payload?.error === "string" ? payload.error : "WhatsApp send failed")
-        : null;
-
-      setState((prev) => ({
-        ...prev,
-        conversations: prev.conversations.map((c) => {
-          if (c.id !== conversationId) return c;
-          return {
-            ...c,
-            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState } : m),
-            notes: failureNote
-              ? [{ id: uid("n"), body: `WhatsApp send failed: ${failureNote}`, createdAt: new Date().toISOString() }, ...c.notes]
-              : c.notes,
-          };
-        })
-      }));
-    } catch (error) {
-      const failureMessage = error instanceof Error ? error.message : "Unexpected WhatsApp send error";
-      setState((prev) => ({
-        ...prev,
-        conversations: prev.conversations.map((c) => {
-          if (c.id !== conversationId) return c;
-          return {
-            ...c,
-            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
-            notes: [{ id: uid("n"), body: `WhatsApp send failed: ${failureMessage}`, createdAt: new Date().toISOString() }, ...c.notes],
-          };
-        })
-      }));
-    }
+  function sendMessage(conversationId: string, body: string) {
+    if (!body.trim()) return;
+    setState((prev) => ({
+      ...prev,
+      conversations: prev.conversations.map((c) => {
+        if (c.id !== conversationId) return c;
+        const msg: Message = {
+          id: uid("m"),
+          direction: "outbound",
+          body,
+          createdAt: new Date().toISOString(),
+          channel: c.channel,
+          author: "Agent",
+          deliveryState: c.channel === "whatsapp" ? "sent" : undefined,
+        };
+        return {
+          ...c,
+          lastMessagePreview: body,
+          updatedAt: new Date().toISOString(),
+          status: c.status === "new" ? "open" : c.status,
+          messages: [...c.messages, msg]
+        };
+      })
+    }));
   }
 
   function addNote(conversationId: string, body: string) {
