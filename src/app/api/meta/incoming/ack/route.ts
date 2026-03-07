@@ -14,14 +14,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, count: 0 });
   }
 
-  const updatePayload: Record<string, unknown> = {
-    consumed: true,
-    consumed_at: new Date().toISOString(),
-  };
-
   const { error } = await supabase
     .from("meta_incoming_messages")
-    .update(updatePayload as never)
+    .update({ consumed: true, consumed_at: new Date().toISOString() })
     .in("id", ids);
 
   if (error) {
