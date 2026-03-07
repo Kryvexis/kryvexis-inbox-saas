@@ -1,50 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Kpi } from "@/components/Kpi";
 import { useStore } from "@/components/StoreProvider";
+import { Kpi } from "@/components/Kpi";
 
 export default function ContactsPage() {
   const { state } = useStore();
-  const [query, setQuery] = useState("");
-
-  const contacts = useMemo(() => state.contacts.filter((c) => {
-    if (!query.trim()) return true;
-    return [c.name, c.phone, c.email, c.tags.join(" ")].filter(Boolean).some((v) => String(v).toLowerCase().includes(query.toLowerCase()));
-  }), [query, state.contacts]);
 
   return (
     <div className="grid gap-4">
       <div>
-        <div className="text-2xl font-semibold tracking-tight">Contacts</div>
-        <div className="mt-1 text-sm text-neutral-500">A simple contact list for the customers you are working with.</div>
+        <div className="text-xl font-semibold">Contacts</div>
+        <div className="text-sm text-neutral-500">Light CRM view of customers and tags.</div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        <Kpi label="Total" value={state.contacts.length} />
-        <Kpi label="Leads" value={state.contacts.filter((c) => c.tags.includes("lead")).length} />
-        <Kpi label="Customers" value={state.contacts.filter((c) => c.tags.includes("paid")).length} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <Kpi label="Total contacts" value={state.contacts.length} />
+        <Kpi label="Lead contacts" value={state.contacts.filter((c) => c.tags.includes("lead")).length} />
+        <Kpi label="Paid contacts" value={state.contacts.filter((c) => c.tags.includes("paid")).length} />
       </div>
 
-      <div className="kx-card2 p-4">
-        <input className="kx-input md:max-w-sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search contacts" />
-        <div className="mt-4 grid gap-3">
-          {contacts.map((c) => (
-            <div key={c.id} className="rounded-2xl border border-neutral-200 p-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <div className="font-medium">{c.name}</div>
-                  <div className="mt-1 text-sm text-neutral-500">{c.phone}</div>
-                  <div className="mt-1 text-sm text-neutral-500">{c.email ?? "No email saved"}</div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {c.tags.map((t) => <span key={t} className="kx-badge">{t}</span>)}
-                </div>
-              </div>
-            </div>
-          ))}
-          {!contacts.length ? <div className="text-sm text-neutral-500">No contacts match your search.</div> : null}
-        </div>
+      <div className="kx-card2 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-neutral-50 text-neutral-600">
+            <tr>
+              <th className="p-3 text-left font-medium">Name</th>
+              <th className="p-3 text-left font-medium">Phone</th>
+              <th className="p-3 text-left font-medium">Email</th>
+              <th className="p-3 text-left font-medium">Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.contacts.map((c) => (
+              <tr key={c.id} className="border-t border-neutral-100">
+                <td className="p-3">{c.name}</td>
+                <td className="p-3">{c.phone}</td>
+                <td className="p-3">{c.email ?? "—"}</td>
+                <td className="p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {c.tags.map((t) => <span key={t} className="kx-badge">{t}</span>)}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

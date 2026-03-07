@@ -56,14 +56,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           direction: "outbound",
           body,
           createdAt: new Date().toISOString(),
+          channel: c.channel,
+          author: "Agent",
+          deliveryState: c.channel === "whatsapp" ? "sent" : undefined,
         };
         return {
           ...c,
           lastMessagePreview: body,
           updatedAt: new Date().toISOString(),
-          messages: [...c.messages, msg],
+          status: c.status === "new" ? "open" : c.status,
+          messages: [...c.messages, msg]
         };
-      }),
+      })
     }));
   }
 
@@ -75,25 +79,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (c.id !== conversationId) return c;
         const note = { id: uid("n"), body, createdAt: new Date().toISOString() };
         return { ...c, notes: [note, ...c.notes] };
-      }),
+      })
     }));
   }
 
   function updateStatus(conversationId: string, status: Conversation["status"]) {
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) => (c.id === conversationId ? { ...c, status } : c)),
+      conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, status } : c)
     }));
   }
 
   function injectLead() {
     const names = ["Zanele S.", "Thabo P.", "Ayesha N.", "Gift M.", "Lebo T."];
     const texts = [
-      "Hi, can you send your prices?",
+      "Hi 👋 can you send your prices?",
       "Do you deliver in my area?",
       "I want a quote please.",
       "Can someone call me back?",
-      "How long does shipping take?",
+      "How long does shipping take?"
     ];
     const name = names[Math.floor(Math.random() * names.length)];
     const text = texts[Math.floor(Math.random() * texts.length)];
@@ -106,27 +110,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (matched) autoReply = matched.autoReply;
 
     const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
-    const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString() }];
+    const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString(), channel: "whatsapp", author: name }];
     if (autoReply) {
-      messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString() });
+      messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString(), channel: "whatsapp", author: "Agent", deliveryState: "sent" });
     }
 
     const convo: Conversation = {
       id: convoId,
       contactId,
-      status: "open",
+      status: "new",
       assignedTo: "t2",
-      subject: "New lead",
+      subject: "New WhatsApp lead",
       lastMessagePreview: autoReply ?? text,
       updatedAt: new Date().toISOString(),
       messages,
       notes: [],
+      channel: "whatsapp",
+      unreadCount: 1,
+      priority: "medium",
+      labels: ["new lead"]
     };
 
     setState((prev) => ({
       ...prev,
       contacts: [contact, ...prev.contacts],
-      conversations: [convo, ...prev.conversations],
+      conversations: [convo, ...prev.conversations]
     }));
     setSelectedConversationId(convoId);
   }
@@ -138,7 +146,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       name: `Keyword: ${keyword}`,
       keyword,
       autoReply,
-      enabled: true,
+      enabled: true
     };
     setState((prev) => ({ ...prev, rules: [rule, ...prev.rules] }));
   }
@@ -165,7 +173,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addNote,
     updateStatus,
     addQuote,
-    addProduct,
+    addProduct
   }), [state, selectedConversationId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

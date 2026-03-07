@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 html, body { height: 100%; }
-body { @apply bg-neutral-50 text-neutral-900; }
+body { @apply bg-white text-neutral-900; }
 
 @layer components {
-  .kx-shell { @apply min-h-screen bg-neutral-50 text-neutral-900; }
-  .kx-container { @apply mx-auto max-w-7xl px-4 sm:px-6; }
-  .kx-card { @apply rounded-[28px] border border-neutral-200 bg-white shadow-sm; }
-  .kx-card2 { @apply rounded-3xl border border-neutral-200 bg-white shadow-sm; }
-  .kx-btn { @apply inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition; }
+  .kx-shell { @apply min-h-screen bg-white text-neutral-900; }
+  .kx-container { @apply mx-auto max-w-7xl px-6; }
+  .kx-card { @apply rounded-3xl border border-neutral-200 bg-white shadow-soft; }
+  .kx-card2 { @apply rounded-2xl border border-neutral-200 bg-white shadow-sm; }
+  .kx-btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition; }
   .kx-btn-primary { @apply bg-black text-white hover:opacity-90; }
   .kx-btn-ghost { @apply text-neutral-700 hover:bg-neutral-100; }
-  .kx-input { @apply w-full rounded-2xl border border-neutral-200 bg-white px-3 py-2.5 outline-none transition focus:ring-2 focus:ring-black/10; }
-  .kx-badge { @apply inline-flex items-center rounded-full border border-neutral-200 px-2.5 py-1 text-xs text-neutral-600; }
+  .kx-input { @apply w-full rounded-xl border border-neutral-200 px-3 py-2 outline-none focus:ring-2 focus:ring-black/10; }
+  .kx-badge { @apply inline-flex items-center rounded-full border border-neutral-200 px-2.5 py-0.5 text-xs text-neutral-600; }
 }

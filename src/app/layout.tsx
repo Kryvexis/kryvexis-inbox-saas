@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
 import "./globals.css";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Kryvexis Inbox System",
-  description: "A calm workspace for customer conversations, quotes, products, and team follow-up.",
+  description: "Customer conversations, quotes, and team follow-up in one Meta-ready workspace.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>

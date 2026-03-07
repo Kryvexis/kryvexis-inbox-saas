@@ -1,9 +1,11 @@
 import type { AppState } from "./types";
 
+const now = new Date().toISOString();
+
 export const seedState: AppState = {
   contacts: [
     { id: "c1", name: "Sipho M.", phone: "+27 68 628 2874", email: "sipho@example.com", tags: ["lead", "priority"] },
-    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", tags: ["paid"] },
+    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", tags: ["customer"] },
     { id: "c3", name: "Ahmed D.", phone: "+27 61 999 2201", email: "ahmed@example.com", tags: ["lead"] }
   ],
   conversations: [
@@ -12,34 +14,60 @@ export const seedState: AppState = {
       contactId: "c1",
       status: "open",
       assignedTo: "t2",
-      subject: "Pricing inquiry",
-      lastMessagePreview: "Can you send prices?",
-      updatedAt: new Date().toISOString(),
+      subject: "Pricing request from WhatsApp",
+      lastMessagePreview: "Please send your latest pricing.",
+      updatedAt: now,
+      channel: "whatsapp",
+      unreadCount: 1,
+      priority: "high",
+      labels: ["pricing", "hot lead"],
       messages: [
-        { id: "m1", direction: "inbound", body: "Hi 👋 can you send your prices?", createdAt: new Date().toISOString() },
-        { id: "m2", direction: "outbound", body: "Sure — here are our packages.", createdAt: new Date().toISOString() }
+        { id: "m1", direction: "inbound", body: "Hi 👋 can you send your latest prices?", createdAt: now, channel: "whatsapp", author: "Sipho M." },
+        { id: "m2", direction: "outbound", body: "Absolutely. I can send packages and delivery options.", createdAt: now, channel: "whatsapp", author: "Ant", deliveryState: "read" }
       ],
       notes: [
-        { id: "n1", body: "Hot lead. Wants response today.", createdAt: new Date().toISOString() }
+        { id: "n1", body: "High intent. Follow up with quote before close of business.", createdAt: now }
       ]
     },
     {
       id: "v2",
       contactId: "c2",
-      status: "pending",
+      status: "awaiting_customer",
       assignedTo: "t3",
-      subject: "Invoice follow-up",
-      lastMessagePreview: "Please resend invoice",
-      updatedAt: new Date().toISOString(),
+      subject: "Invoice resend",
+      lastMessagePreview: "I’ve resent the invoice to your email address.",
+      updatedAt: now,
+      channel: "manual",
+      unreadCount: 0,
+      priority: "medium",
+      labels: ["billing"],
       messages: [
-        { id: "m3", direction: "inbound", body: "Please resend my invoice.", createdAt: new Date().toISOString() }
+        { id: "m3", direction: "inbound", body: "Please resend my invoice.", createdAt: now, channel: "manual", author: "Lerato K." },
+        { id: "m4", direction: "outbound", body: "Done. Please confirm once you receive it.", createdAt: now, channel: "manual", author: "Mpho", deliveryState: "sent" }
+      ],
+      notes: []
+    },
+    {
+      id: "v3",
+      contactId: "c3",
+      status: "new",
+      assignedTo: "t2",
+      subject: "Stock check",
+      lastMessagePreview: "Do you still have the Business Package available?",
+      updatedAt: now,
+      channel: "web",
+      unreadCount: 2,
+      priority: "low",
+      labels: ["website"],
+      messages: [
+        { id: "m5", direction: "inbound", body: "Do you still have the Business Package available?", createdAt: now, channel: "web", author: "Ahmed D." }
       ],
       notes: []
     }
   ],
   rules: [
-    { id: "r1", name: "Price Auto-Reply", keyword: "price", autoReply: "Here are our latest prices and packages.", enabled: true },
-    { id: "r2", name: "Delivery Auto-Reply", keyword: "deliver", autoReply: "Yes, we deliver. Please share your area.", enabled: true }
+    { id: "r1", name: "Pricing auto-reply", keyword: "price", autoReply: "Thanks for reaching out. I can send the latest pricing and package options.", enabled: true },
+    { id: "r2", name: "Delivery auto-reply", keyword: "deliver", autoReply: "Yes, delivery is available. Please send your area so I can confirm lead time.", enabled: true }
   ],
   quotes: [
     { id: "q1", customer: "Sipho M.", amount: 2499, status: "sent" },

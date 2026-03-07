@@ -1,4 +1,6 @@
-"use client";
+from pathlib import Path
+p = Path('/tmp/inboxmeta/src/app/app/settings/page.tsx')
+p.write_text('''"use client";
 
 import { useEffect, useState } from "react";
 import { useStore } from "@/components/StoreProvider";
@@ -81,3 +83,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+''')
