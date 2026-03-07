@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kryvexis Showcase",
-  description: "Stable Vercel-ready SaaS showcase before API integration."
+  title: "Kryvexis Inbox System",
+  description: "Customer conversations, quotes, products, and team follow-up in one workspace."
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
