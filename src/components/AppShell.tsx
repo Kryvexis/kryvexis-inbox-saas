@@ -28,8 +28,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Logo />
           </Link>
           <div className="flex items-center gap-3">
-            <span className="kx-badge">Meta-ready</span>
-            <button className="kx-btn kx-btn-primary" onClick={injectLead}>Add sample lead</button>
+            <span className="kx-badge">Demo-ready</span>
+            <button className="kx-btn kx-btn-primary" onClick={injectLead}>Inject demo lead</button>
           </div>
         </div>
       </header>
@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="p-4">
             <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-4">
               <div className="text-sm font-medium">Workspace</div>
-              <div className="text-xs text-neutral-500">Kryvexis Inbox System</div>
+              <div className="text-xs text-neutral-500">Kryvexis Inbox</div>
             </div>
 
             <nav className="mt-4 space-y-1">

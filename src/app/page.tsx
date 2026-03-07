@@ -8,21 +8,21 @@ export default function Home() {
         <header className="flex items-center justify-between">
           <Logo />
           <div className="flex items-center gap-3">
-            <Link href="/app/inbox" className="kx-btn kx-btn-primary">Open workspace</Link>
+            <Link href="/app/inbox" className="kx-btn kx-btn-primary">Open product</Link>
           </div>
         </header>
 
         <section className="mt-16 grid gap-10 md:grid-cols-2 md:items-center">
           <div>
             <h1 className="text-5xl font-semibold tracking-tight">
-              Kryvexis Inbox System
+              A clean product you can actually show people.
             </h1>
             <p className="mt-5 text-lg text-neutral-600">
-              A centralized workspace for customer conversations, quotes, products, and team follow-up, now prepared for live Meta WhatsApp messaging.
+              Inbox, CRM, automations, analytics, quotes, products, and team workflows — all in one polished SaaS shell.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/app/inbox" className="kx-btn kx-btn-primary px-5 py-3">Launch workspace</Link>
-              <span className="kx-badge">Meta-ready integration layer</span>
+              <Link href="/app/inbox" className="kx-btn kx-btn-primary px-5 py-3">Launch showcase</Link>
+              <span className="kx-badge">No external APIs required</span>
             </div>
           </div>
 
@@ -31,16 +31,16 @@ export default function Home() {
               <div className="text-sm font-semibold">Today</div>
               <div className="mt-3 space-y-3">
                 <div className="rounded-2xl border border-neutral-200 p-4">
-                  <div className="font-medium">New WhatsApp lead</div>
-                  <div className="text-sm text-neutral-600">A customer asked for pricing and delivery options.</div>
+                  <div className="font-medium">New lead: Sipho</div>
+                  <div className="text-sm text-neutral-600">Wants pricing + delivery options.</div>
                 </div>
                 <div className="rounded-2xl border border-neutral-200 p-4">
-                  <div className="font-medium">Workflow executed</div>
-                  <div className="text-sm text-neutral-600">Pricing keyword triggered the prepared reply flow.</div>
+                  <div className="font-medium">Automation fired</div>
+                  <div className="text-sm text-neutral-600">Keyword “price” sent the canned reply.</div>
                 </div>
                 <div className="rounded-2xl border border-neutral-200 p-4">
-                  <div className="font-medium">Quote delivered</div>
-                  <div className="text-sm text-neutral-600">A proposal is ready to follow the conversation through to close.</div>
+                  <div className="font-medium">Quote sent</div>
+                  <div className="text-sm text-neutral-600">R2,499 proposal sent to lead.</div>
                 </div>
               </div>
             </div>

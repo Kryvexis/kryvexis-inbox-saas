@@ -20,7 +20,7 @@ export function Sidebar() {
       <div className="p-4">
         <div className="rounded-3xl border border-neutral-200 bg-neutral-50 p-3">
           <div className="text-sm font-medium">Workspace</div>
-          <div className="text-xs text-neutral-500">Kryvexis Inbox System</div>
+          <div className="text-xs text-neutral-500">Kryvexis Inbox</div>
         </div>
 
         <nav className="mt-4 space-y-1">
@@ -44,15 +44,15 @@ export function Sidebar() {
         </nav>
 
         <div className="mt-6 rounded-3xl border border-neutral-200 p-4">
-          <div className="text-sm font-semibold">Sample tools</div>
+          <div className="text-sm font-semibold">Demo tools</div>
           <div className="mt-1 text-xs text-neutral-500">
-            Add sample conversations while you connect the live Meta channel.
+            Inject fake messages (no WhatsApp API needed).
           </div>
           <Link
             className="mt-3 inline-block w-full text-center kx-btn kx-btn-primary"
             href="/app/inbox?demo=1"
           >
-            Add sample lead
+            Inject demo lead
           </Link>
         </div>
       </div>
