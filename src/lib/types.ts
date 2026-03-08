@@ -1,6 +1,7 @@
 export type Status = "new" | "open" | "awaiting_customer" | "resolved";
-export type Channel = "whatsapp" | "web" | "manual";
-export type DeliveryState = "pending" | "sent" | "delivered" | "read" | "failed";
+export type Channel = "whatsapp" | "web" | "manual" | "native";
+export type ProviderKind = "meta" | "native" | "none";
+export type DeliveryState = "queued" | "pending" | "sent" | "delivered" | "read" | "failed";
 
 export type Contact = {
   id: string;
@@ -16,8 +17,11 @@ export type Message = {
   body: string;
   createdAt: string;
   channel?: Channel;
+  provider?: ProviderKind;
   author?: string;
   deliveryState?: DeliveryState;
+  remoteMessageId?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type Note = {
@@ -37,6 +41,7 @@ export type Conversation = {
   messages: Message[];
   notes: Note[];
   channel: Channel;
+  provider: ProviderKind;
   unreadCount: number;
   priority: "low" | "medium" | "high";
   labels: string[];
@@ -80,6 +85,13 @@ export type MetaConnectionState = {
   webhookPath: string;
 };
 
+export type ConnectorHealth = {
+  provider: ProviderKind;
+  enabled: boolean;
+  label: string;
+  detail: string;
+};
+
 export type MetaInboundRecord = {
   id: string;
   phone: string;
@@ -89,6 +101,22 @@ export type MetaInboundRecord = {
   wamid?: string;
   metadata?: Record<string, unknown>;
 };
+
+export type SendMessageResult =
+  | {
+      ok: true;
+      conversationId: string;
+      messageId: string;
+      provider: ProviderKind;
+      remoteMessageId?: string;
+    }
+  | {
+      ok: false;
+      conversationId?: string;
+      messageId?: string;
+      provider?: ProviderKind;
+      error: string;
+    };
 
 export type AppState = {
   contacts: Contact[];

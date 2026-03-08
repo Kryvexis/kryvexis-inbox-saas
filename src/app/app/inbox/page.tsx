@@ -15,6 +15,10 @@ function statusLabel(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function providerLabel(value?: string) {
+  return value === "meta" ? "Meta add-on" : value === "native" ? "Inbox core" : "Internal";
+}
+
 export default function InboxPage() {
   const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus } = useStore();
   const [body, setBody] = useState("");
@@ -36,7 +40,7 @@ export default function InboxPage() {
 
   const selected = useMemo(
     () => filteredConversations.find((c) => c.id === selectedConversationId) ?? filteredConversations[0] ?? state.conversations[0],
-    [filteredConversations, state.conversations, selectedConversationId]
+    [filteredConversations, state.conversations, selectedConversationId],
   );
 
   const selectedContact = state.contacts.find((c) => c.id === selected?.contactId);
@@ -45,18 +49,24 @@ export default function InboxPage() {
     openCount: state.conversations.filter((c) => c.status === "open").length,
     waitingCount: state.conversations.filter((c) => c.status === "awaiting_customer").length,
   }), [state.conversations]);
+  const providerCounts = useMemo(() => ({
+    native: state.conversations.filter((c) => c.provider === "native").length,
+    meta: state.conversations.filter((c) => c.provider === "meta").length,
+  }), [state.conversations]);
 
   return (
     <div className="grid gap-4">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xl font-semibold">Inbox</div>
-          <div className="text-sm text-neutral-500">Manage live WhatsApp conversations, follow-up, and customer context from one workspace.</div>
+          <div className="text-sm text-neutral-500">Run Kryvexis Inbox as a native messaging CRM first, with Meta/WhatsApp as an optional add-on.</div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-sm md:w-[360px]">
+        <div className="grid grid-cols-5 gap-2 text-sm md:w-[620px]">
           <div className="kx-card2 p-3"><div className="text-neutral-500">New</div><div className="mt-1 text-xl font-semibold">{queueCounts.newCount}</div></div>
           <div className="kx-card2 p-3"><div className="text-neutral-500">Open</div><div className="mt-1 text-xl font-semibold">{queueCounts.openCount}</div></div>
           <div className="kx-card2 p-3"><div className="text-neutral-500">Awaiting</div><div className="mt-1 text-xl font-semibold">{queueCounts.waitingCount}</div></div>
+          <div className="kx-card2 p-3"><div className="text-neutral-500">Inbox core</div><div className="mt-1 text-xl font-semibold">{providerCounts.native}</div></div>
+          <div className="kx-card2 p-3"><div className="text-neutral-500">Meta add-on</div><div className="mt-1 text-xl font-semibold">{providerCounts.meta}</div></div>
         </div>
       </div>
 
@@ -88,9 +98,10 @@ export default function InboxPage() {
                     {c.unreadCount > 0 ? <span className="rounded-full bg-black px-2 py-0.5 text-[11px] font-medium text-white">{c.unreadCount}</span> : null}
                   </div>
                   <div className="mt-1 truncate text-xs text-neutral-500">{c.lastMessagePreview}</div>
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-neutral-500">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
                     <span className="kx-badge">{statusLabel(c.status)}</span>
                     <span className="kx-badge">{c.channel}</span>
+                    <span className="kx-badge">{providerLabel(c.provider)}</span>
                     <span className="kx-badge">{c.priority}</span>
                   </div>
                 </button>
@@ -104,7 +115,7 @@ export default function InboxPage() {
           <div className="border-b border-neutral-200 p-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium">{selectedContact?.name ?? "Select conversation"}</div>
-              <div className="text-xs text-neutral-500">{selectedContact?.phone} · {selected?.channel ?? "channel"}</div>
+              <div className="text-xs text-neutral-500">{selectedContact?.phone || selectedContact?.email || "No external address"} · {selected?.channel ?? "channel"} · {providerLabel(selected?.provider)}</div>
             </div>
             {selected ? (
               <select
@@ -134,6 +145,8 @@ export default function InboxPage() {
                 <div className={m.direction === "outbound" ? "mt-1 text-xs text-white/70" : "mt-1 text-xs text-neutral-500"}>
                   {m.author ?? m.direction} · {new Date(m.createdAt).toLocaleString()}
                   {m.deliveryState ? ` · ${m.deliveryState}` : ""}
+                  {m.provider ? ` · ${providerLabel(m.provider)}` : ""}
+                  {m.remoteMessageId ? ` · ${m.remoteMessageId}` : ""}
                 </div>
               </div>
             ))}
@@ -151,7 +164,7 @@ export default function InboxPage() {
                   className="kx-input"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder={selected.channel === "whatsapp" ? "Reply to WhatsApp conversation" : "Write a reply"}
+                  placeholder={selected.provider === "meta" ? "Reply via Meta WhatsApp add-on" : "Write a native Inbox reply"}
                 />
                 <button
                   className="kx-btn kx-btn-primary"
@@ -161,9 +174,7 @@ export default function InboxPage() {
                     setSending(true);
                     try {
                       const result = await sendMessage(selected.id, body);
-                      if (result.ok) {
-                        setBody("");
-                      }
+                      if (result.ok) setBody("");
                     } finally {
                       setSending(false);
                     }
@@ -192,6 +203,7 @@ export default function InboxPage() {
             <div className="text-sm font-medium">Connection context</div>
             <div className="mt-3 text-sm text-neutral-600 space-y-1">
               <div>Channel: <b>{selected?.channel ?? "—"}</b></div>
+              <div>Provider: <b>{providerLabel(selected?.provider)}</b></div>
               <div>Assigned to: <b>{selected?.assignedTo ?? "Unassigned"}</b></div>
               <div>Latest activity: <b>{selected ? new Date(selected.updatedAt).toLocaleString() : "—"}</b></div>
             </div>
