@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Tenant persistence unavailable" }, { status: 200 });
     }
 
-    const payload = await request.json().catch(() => null) as {
+    const payload = (await request.json().catch(() => null)) as {
       contact?: { id?: string; name?: string; phone?: string; email?: string; tags?: string[] };
       conversation?: { id?: string; subject?: string; status?: string; lastMessagePreview?: string; updatedAt?: string };
       initialMessage?: { id?: string; body?: string; direction?: string; createdAt?: string };
@@ -40,17 +40,19 @@ export async function POST(request: Request) {
     const { admin, tenantId } = ctx;
     const now = payload?.conversation?.updatedAt?.trim() || new Date().toISOString();
 
-    const { error: contactError } = await admin.from("contacts").upsert({
+    const contactRow = {
       id: contactId,
       tenant_id: tenantId,
       name,
       phone: payload?.contact?.phone?.trim() || "—",
       email: payload?.contact?.email?.trim() || null,
       tags: Array.isArray(payload?.contact?.tags) ? payload?.contact?.tags : ["native"],
-    });
+    } as Record<string, unknown>;
+
+    const { error: contactError } = await admin.from("contacts").upsert(contactRow);
     if (contactError) throw new Error(contactError.message);
 
-    const { error: conversationError } = await admin.from("conversations").upsert({
+    const conversationRow = {
       id: conversationId,
       tenant_id: tenantId,
       contact_id: contactId,
@@ -58,17 +60,21 @@ export async function POST(request: Request) {
       subject,
       last_message_preview: payload?.conversation?.lastMessagePreview?.trim() || body,
       updated_at: now,
-    });
+    } as Record<string, unknown>;
+
+    const { error: conversationError } = await admin.from("conversations").upsert(conversationRow);
     if (conversationError) throw new Error(conversationError.message);
 
-    const { error: messageError } = await admin.from("messages").upsert({
+    const messageRow = {
       id: messageId,
       tenant_id: tenantId,
       conversation_id: conversationId,
       direction: payload?.initialMessage?.direction?.trim() || "inbound",
       body,
       created_at: payload?.initialMessage?.createdAt?.trim() || now,
-    });
+    } as Record<string, unknown>;
+
+    const { error: messageError } = await admin.from("messages").upsert(messageRow);
     if (messageError) throw new Error(messageError.message);
 
     return NextResponse.json({ ok: true, conversationId, contactId, messageId });
