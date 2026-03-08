@@ -8,6 +8,32 @@ async function getTenantId() {
   return profile?.tenant_id ?? null;
 }
 
+type ContactRow = {
+  id?: string | null;
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  tags?: unknown;
+};
+
+type ConversationRow = {
+  id?: string | null;
+  contact_id?: string | null;
+  status?: string | null;
+  subject?: string | null;
+  last_message_preview?: string | null;
+  updated_at?: string | null;
+  assigned_to?: string | null;
+};
+
+type MessageRow = {
+  id?: string | null;
+  conversation_id?: string | null;
+  direction?: string | null;
+  body?: string | null;
+  created_at?: string | null;
+};
+
 export async function GET() {
   try {
     const admin = getServerSupabaseAdmin();
@@ -35,8 +61,14 @@ export async function GET() {
     if (contactsError) throw new Error(contactsError.message);
     if (conversationError) throw new Error(conversationError.message);
 
-    const conversationIds = (conversationRows ?? []).map((row) => row.id as string);
-    let messagesRows: Array<Record<string, unknown>> = [];
+    const safeContactsRows = ((contactsRows as ContactRow[] | null) ?? []);
+    const safeConversationRows = ((conversationRows as ConversationRow[] | null) ?? []);
+
+    const conversationIds = safeConversationRows
+      .map((row) => row.id)
+      .filter((id): id is string => Boolean(id));
+
+    let messagesRows: MessageRow[] = [];
     if (conversationIds.length) {
       const { data, error } = await admin
         .from("messages")
@@ -46,10 +78,10 @@ export async function GET() {
         .order("created_at", { ascending: true })
         .limit(1000);
       if (error) throw new Error(error.message);
-      messagesRows = data ?? [];
+      messagesRows = ((data as MessageRow[] | null) ?? []);
     }
 
-    const contacts: Contact[] = (contactsRows ?? []).map((row) => ({
+    const contacts: Contact[] = safeContactsRows.map((row) => ({
       id: String(row.id),
       name: String(row.name ?? "Unknown"),
       phone: String(row.phone ?? "—"),
@@ -75,7 +107,7 @@ export async function GET() {
       messagesByConversation.set(conversationId, existing);
     }
 
-    const conversations: Conversation[] = (conversationRows ?? []).map((row) => ({
+    const conversations: Conversation[] = safeConversationRows.map((row) => ({
       id: String(row.id),
       contactId: String(row.contact_id),
       status: (String(row.status ?? "open") as Conversation["status"]),
