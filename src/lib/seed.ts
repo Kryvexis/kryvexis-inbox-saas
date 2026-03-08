@@ -4,9 +4,9 @@ const now = new Date().toISOString();
 
 export const seedState: AppState = {
   contacts: [
-    { id: "c1", name: "Sipho M.", phone: "+27 68 628 2874", email: "sipho@example.com", tags: ["lead", "priority", "whatsapp"] },
-    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", tags: ["customer", "native"] },
-    { id: "c3", name: "Ahmed D.", phone: "+27 61 999 2201", email: "ahmed@example.com", tags: ["lead", "website"] }
+    { id: "c1", name: "Sipho M.", phone: "+27 68 628 2874", email: "sipho@example.com", tags: ["lead", "priority"] },
+    { id: "c2", name: "Lerato K.", phone: "+27 72 123 0000", email: "lerato@example.com", tags: ["customer"] },
+    { id: "c3", name: "Ahmed D.", phone: "+27 61 999 2201", email: "ahmed@example.com", tags: ["lead"] }
   ],
   conversations: [
     {
@@ -19,13 +19,13 @@ export const seedState: AppState = {
       updatedAt: now,
       channel: "whatsapp",
       provider: "meta",
-      source: "customer",
       unreadCount: 1,
       priority: "high",
-      labels: ["pricing", "hot lead", "meta add-on"],
+      labels: ["pricing", "hot lead"],
+      persisted: false,
       messages: [
         { id: "m1", direction: "inbound", body: "Hi 👋 can you send your latest prices?", createdAt: now, channel: "whatsapp", provider: "meta", author: "Sipho M." },
-        { id: "m2", direction: "outbound", body: "Absolutely. I can send packages and delivery options.", createdAt: now, channel: "whatsapp", provider: "meta", author: "Ant", deliveryState: "read", remoteMessageId: "wamid.seeded-demo" }
+        { id: "m2", direction: "outbound", body: "Absolutely. I can send packages and delivery options.", createdAt: now, channel: "whatsapp", provider: "meta", author: "Ant", deliveryState: "read", remoteMessageId: "wamid.seed.1" }
       ],
       notes: [
         { id: "n1", body: "High intent. Follow up with quote before close of business.", createdAt: now }
@@ -36,15 +36,15 @@ export const seedState: AppState = {
       contactId: "c2",
       status: "awaiting_customer",
       assignedTo: "t3",
-      subject: "Native follow-up thread",
+      subject: "Invoice resend",
       lastMessagePreview: "I’ve resent the invoice to your email address.",
       updatedAt: now,
       channel: "manual",
       provider: "native",
-      source: "agent",
       unreadCount: 0,
       priority: "medium",
-      labels: ["billing", "inbox core"],
+      labels: ["billing", "native"],
+      persisted: false,
       messages: [
         { id: "m3", direction: "inbound", body: "Please resend my invoice.", createdAt: now, channel: "manual", provider: "native", author: "Lerato K." },
         { id: "m4", direction: "outbound", body: "Done. Please confirm once you receive it.", createdAt: now, channel: "manual", provider: "native", author: "Mpho", deliveryState: "sent" }
@@ -56,15 +56,15 @@ export const seedState: AppState = {
       contactId: "c3",
       status: "new",
       assignedTo: "t2",
-      subject: "Stock check from website",
+      subject: "Stock check",
       lastMessagePreview: "Do you still have the Business Package available?",
       updatedAt: now,
       channel: "web",
       provider: "native",
-      source: "customer",
       unreadCount: 2,
       priority: "low",
-      labels: ["website", "inbox core"],
+      labels: ["website", "native"],
+      persisted: false,
       messages: [
         { id: "m5", direction: "inbound", body: "Do you still have the Business Package available?", createdAt: now, channel: "web", provider: "native", author: "Ahmed D." }
       ],

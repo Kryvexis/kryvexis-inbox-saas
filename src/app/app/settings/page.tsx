@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/components/StoreProvider";
 import type { MetaConnectionState } from "@/lib/types";
 
@@ -23,16 +23,11 @@ export default function SettingsPage() {
       .catch(() => setMeta(emptyMeta));
   }, []);
 
-  const counts = useMemo(() => ({
-    inboxCore: state.conversations.filter((c) => c.provider === "native").length,
-    metaAddon: state.conversations.filter((c) => c.provider === "meta").length,
-  }), [state.conversations]);
-
   return (
     <div className="grid gap-4">
       <div>
         <div className="text-xl font-semibold">Settings</div>
-        <div className="text-sm text-neutral-500">Kryvexis Inbox Core runs natively. Meta / WhatsApp is shown here as an optional connector.</div>
+        <div className="text-sm text-neutral-500">Kryvexis Inbox Core runs natively. Meta / WhatsApp is managed here as an optional connector.</div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -40,9 +35,8 @@ export default function SettingsPage() {
           <div className="text-sm font-semibold">Workspace</div>
           <div className="mt-3 text-sm text-neutral-600">
             <div>Name: <b>Kryvexis Inbox System</b></div>
-            <div className="mt-1">Inbox Core: <b>Active</b></div>
-            <div className="mt-1">Native conversations: <b>{counts.inboxCore}</b></div>
-            <div className="mt-1">Meta add-on threads: <b>{counts.metaAddon}</b></div>
+            <div className="mt-1">Core mode: <b>Native Inbox first</b></div>
+            <div className="mt-1">Meta add-on: <b>{meta.sendEnabled ? "Connected" : "Optional / disconnected"}</b></div>
           </div>
         </div>
 
@@ -61,26 +55,25 @@ export default function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
         <div className="kx-card2 p-6">
-          <div className="text-sm font-semibold">Connector: Meta / WhatsApp</div>
+          <div className="text-sm font-semibold">Inbox Core and connectors</div>
           <div className="mt-4 grid gap-3 text-sm">
-            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Connector status</span><span className="kx-badge">{meta.sendEnabled ? "Connected" : "Disconnected"}</span></div>
-            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Access token</span><span className="kx-badge">{meta.configured ? "Detected" : "Missing"}</span></div>
-            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Phone number ID</span><span className="kx-badge">{meta.phoneNumberId ? meta.phoneNumberId : "Missing"}</span></div>
-            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Webhook verify token</span><span className="kx-badge">{meta.webhookConfigured ? "Configured" : "Missing"}</span></div>
-            <div className="rounded-2xl border border-neutral-200 p-3 text-neutral-600">
-              Webhook path: <b>{meta.webhookPath}</b>
-            </div>
+            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Inbox Core</span><span className="kx-badge">Active</span></div>
+            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Native conversations</span><span className="kx-badge">Ready</span></div>
+            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Meta access token</span><span className="kx-badge">{meta.configured ? "Detected" : "Missing"}</span></div>
+            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Meta phone number ID</span><span className="kx-badge">{meta.phoneNumberId ? meta.phoneNumberId : "Missing"}</span></div>
+            <div className="flex items-center justify-between rounded-2xl border border-neutral-200 p-3"><span>Meta webhook verify token</span><span className="kx-badge">{meta.webhookConfigured ? "Configured" : "Missing"}</span></div>
+            <div className="rounded-2xl border border-neutral-200 p-3 text-neutral-600">Webhook path: <b>{meta.webhookPath}</b></div>
           </div>
         </div>
 
         <div className="kx-card2 p-6">
-          <div className="text-sm font-semibold">Native-first rollout</div>
+          <div className="text-sm font-semibold">Operating model</div>
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-neutral-600">
-            <li>Use Inbox Core for manual and web conversations first.</li>
-            <li>Keep every message in Kryvexis even if Meta is disconnected.</li>
-            <li>Treat WhatsApp as an optional delivery add-on, not the main system.</li>
-            <li>Reconnect Meta only when outbound WhatsApp is needed.</li>
-            <li>Add more connectors later without changing the core inbox flow.</li>
+            <li>Use Inbox Core for native web and CRM threads.</li>
+            <li>Keep tenant persistence enabled so native threads survive beyond the browser.</li>
+            <li>Connect Meta only when you need WhatsApp as an add-on channel.</li>
+            <li>Redeploy after changing Meta environment variables.</li>
+            <li>Treat Meta errors as connector issues, not core Inbox failures.</li>
           </ol>
         </div>
       </div>

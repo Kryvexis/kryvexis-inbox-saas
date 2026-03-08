@@ -2,28 +2,25 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { seedState } from "@/lib/seed";
-import type { AppState, Conversation, Rule, Contact, Quote, Product, Message, MetaInboundRecord } from "@/lib/types";
-
-type SendMessageResult =
-  | { ok: true; conversationId: string; localMessageId: string; remoteMessageId?: string }
-  | { ok: false; conversationId: string; localMessageId?: string; error: string };
-
-type CreateConversationInput = {
-  name: string;
-  phone?: string;
-  email?: string;
-  subject: string;
-  initialMessage: string;
-  channel: "web" | "manual";
-  priority?: Conversation["priority"];
-};
+import type {
+  AppState,
+  Contact,
+  Conversation,
+  CreateConversationInput,
+  Message,
+  MetaInboundRecord,
+  Product,
+  Quote,
+  Rule,
+  SendMessageResult,
+} from "@/lib/types";
 
 type Store = {
   state: AppState;
   selectedConversationId: string | null;
   setSelectedConversationId: (id: string | null) => void;
   sendMessage: (conversationId: string, body: string) => Promise<SendMessageResult>;
-  createConversation: (input: CreateConversationInput) => string | null;
+  createConversation: (input: CreateConversationInput) => Promise<{ ok: true; conversationId: string } | { ok: false; error: string }>;
   injectLead: () => void;
   addRule: (keyword: string, autoReply: string) => void;
   addNote: (conversationId: string, body: string) => void;
@@ -33,7 +30,7 @@ type Store = {
 };
 
 const StoreContext = createContext<Store | null>(null);
-const KEY = "kryvexis_showcase_state_v1";
+const KEY = "kryvexis_showcase_state_v2";
 
 function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -46,8 +43,44 @@ function normalisePhone(input: string) {
   return digits;
 }
 
-function sortConversations(conversations: Conversation[]) {
-  return [...conversations].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+function mergeById<T extends { id: string }>(current: T[], incoming: T[]) {
+  const map = new Map(current.map((item) => [item.id, item]));
+  for (const item of incoming) {
+    const existing = map.get(item.id);
+    map.set(item.id, existing ? { ...existing, ...item } : item);
+  }
+  return Array.from(map.values());
+}
+
+function mergeServerState(prev: AppState, payload: Partial<AppState>): AppState {
+  const contacts = mergeById(prev.contacts, payload.contacts ?? []);
+  const incomingConversations = payload.conversations ?? [];
+  const mergedConversations = [...prev.conversations];
+
+  for (const incoming of incomingConversations) {
+    const index = mergedConversations.findIndex((c) => c.id === incoming.id);
+    if (index >= 0) {
+      const existing = mergedConversations[index];
+      mergedConversations[index] = {
+        ...existing,
+        ...incoming,
+        notes: mergeById(existing.notes, incoming.notes ?? []),
+        messages: mergeById(existing.messages, incoming.messages ?? []).sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        ),
+      };
+    } else {
+      mergedConversations.push(incoming);
+    }
+  }
+
+  mergedConversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+  return {
+    ...prev,
+    contacts,
+    conversations: mergedConversations,
+  };
 }
 
 function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): AppState {
@@ -64,7 +97,7 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
         id: uid("c"),
         name: item.contact_name?.trim() || phone,
         phone: phone.startsWith("27") ? `+${phone}` : item.phone,
-        tags: ["whatsapp", "meta"],
+        tags: ["whatsapp"],
       };
       contacts = [contact, ...contacts];
     }
@@ -77,8 +110,8 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
       createdAt: item.received_at,
       channel: "whatsapp",
       provider: "meta",
-      remoteMessageId: item.wamid,
       author: item.contact_name?.trim() || contact.name,
+      remoteMessageId: item.wamid,
     };
 
     if (existingConversation) {
@@ -107,15 +140,22 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
       notes: [],
       channel: "whatsapp",
       provider: "meta",
-      source: "customer",
       unreadCount: 1,
       priority: "medium",
-      labels: ["whatsapp", "live inbound", "meta add-on"],
+      labels: ["whatsapp", "live inbound"],
+      persisted: false,
     };
     conversations = [newConversation, ...conversations];
   }
 
-  return { ...prev, contacts, conversations: sortConversations(conversations) };
+  conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  return { ...prev, contacts, conversations };
+}
+
+async function fetchJson(input: RequestInfo | URL, init?: RequestInit) {
+  const response = await fetch(input, init);
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -142,11 +182,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    async function bootstrapNative() {
+      try {
+        const { response, payload } = await fetchJson("/api/inbox/native/bootstrap", { cache: "no-store" });
+        if (!response.ok || !payload?.ok || cancelled) return;
+        setState((prev) => mergeServerState(prev, payload.state as Partial<AppState>));
+      } catch {}
+    }
+
+    bootstrapNative();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
     async function syncIncoming() {
       try {
-        const response = await fetch("/api/meta/incoming", { cache: "no-store" });
+        const { response, payload } = await fetchJson("/api/meta/incoming", { cache: "no-store" });
         if (!response.ok) return;
-        const payload = await response.json();
         const incoming = Array.isArray(payload?.messages) ? payload.messages as MetaInboundRecord[] : [];
         if (!incoming.length || cancelled) return;
 
@@ -173,23 +229,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   async function sendMessage(conversationId: string, body: string): Promise<SendMessageResult> {
     const trimmed = body.trim();
     if (!trimmed) {
-      return { ok: false, conversationId, error: "Message body is empty" };
+      return { ok: false, conversationId, provider: "none", error: "Message body is empty" };
     }
 
     const conversation = state.conversations.find((c) => c.id === conversationId);
+    const contact = conversation ? state.contacts.find((c) => c.id === conversation.contactId) : undefined;
     if (!conversation) {
-      return { ok: false, conversationId, error: "Conversation not found" };
+      return { ok: false, conversationId, provider: "none", error: "Conversation not found" };
     }
 
-    const contact = state.contacts.find((c) => c.id === conversation.contactId);
     const messageId = uid("m");
     const createdAt = new Date().toISOString();
-    const isMetaWhatsApp = conversation.channel === "whatsapp" && conversation.provider === "meta";
-    const localDeliveryState: Message["deliveryState"] = isMetaWhatsApp ? "pending" : "sent";
+    const provider = conversation.provider;
+    const isMetaWhatsApp = provider === "meta" && conversation.channel === "whatsapp" && !!contact?.phone;
 
     setState((prev) => ({
       ...prev,
-      conversations: sortConversations(prev.conversations.map((c) => {
+      conversations: prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
         const msg: Message = {
           id: messageId,
@@ -199,7 +255,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           channel: c.channel,
           provider: c.provider,
           author: "Agent",
-          deliveryState: localDeliveryState,
+          deliveryState: isMetaWhatsApp ? "pending" : "queued",
         };
         return {
           ...c,
@@ -208,133 +264,225 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           status: c.status === "new" ? "open" : c.status,
           messages: [...c.messages, msg],
         };
-      })),
+      }),
     }));
 
-    if (!isMetaWhatsApp) {
-      return { ok: true, conversationId, localMessageId: messageId };
-    }
+    if (isMetaWhatsApp && contact?.phone) {
+      try {
+        const { response, payload } = await fetchJson("/api/meta/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            messageId,
+            to: contact.phone,
+            body: trimmed,
+          }),
+        });
 
-    if (!contact?.phone) {
-      return { ok: false, conversationId, localMessageId: messageId, error: "Missing WhatsApp phone number" };
+        if (!response.ok || !payload?.ok) {
+          const errorText = typeof payload?.error === "string" ? payload.error : "Meta send failed";
+          throw new Error(errorText);
+        }
+
+        setState((prev) => ({
+          ...prev,
+          conversations: prev.conversations.map((c) => {
+            if (c.id !== conversationId) return c;
+            return {
+              ...c,
+              messages: c.messages.map((m) => m.id === messageId ? {
+                ...m,
+                deliveryState: "sent",
+                remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : m.remoteMessageId,
+              } : m),
+            };
+          }),
+        }));
+
+        return {
+          ok: true,
+          conversationId,
+          localMessageId: messageId,
+          remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : undefined,
+          provider: "meta",
+        };
+      } catch (error) {
+        const failureText = error instanceof Error ? error.message : "Meta send failed";
+        setState((prev) => ({
+          ...prev,
+          conversations: prev.conversations.map((c) => {
+            if (c.id !== conversationId) return c;
+            const note = {
+              id: uid("n"),
+              body: `WhatsApp send failed: ${failureText}`,
+              createdAt: new Date().toISOString(),
+            };
+            return {
+              ...c,
+              messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
+              notes: [note, ...c.notes],
+            };
+          }),
+        }));
+
+        return { ok: false, conversationId, localMessageId: messageId, provider: "meta", error: failureText };
+      }
     }
 
     try {
-      const response = await fetch("/api/meta/send", {
+      const { response, payload } = await fetchJson("/api/inbox/native/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          conversationId,
-          messageId,
-          to: contact.phone,
-          body: trimmed,
-        }),
+        body: JSON.stringify({ conversationId, body: trimmed, messageId }),
       });
-      const payload = await response.json().catch(() => ({}));
 
       if (!response.ok || !payload?.ok) {
-        const errorText = typeof payload?.error === "string" ? payload.error : "Meta send failed";
+        const errorText = typeof payload?.error === "string" ? payload.error : "Native send persistence failed";
         throw new Error(errorText);
       }
 
       setState((prev) => ({
         ...prev,
-        conversations: prev.conversations.map((c) => {
-          if (c.id !== conversationId) return c;
-          return {
-            ...c,
-            messages: c.messages.map((m) => m.id === messageId ? {
-              ...m,
-              deliveryState: "sent",
-              remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : m.remoteMessageId,
-            } : m),
-          };
-        }),
+        conversations: prev.conversations.map((c) => c.id === conversationId ? {
+          ...c,
+          persisted: true,
+          messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "sent" } : m),
+        } : c),
       }));
 
-      return {
-        ok: true,
-        conversationId,
-        localMessageId: messageId,
-        remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : undefined,
-      };
+      return { ok: true, conversationId, localMessageId: messageId, provider: conversation.provider };
     } catch (error) {
-      const failureText = error instanceof Error ? error.message : "Meta send failed";
+      const failureText = error instanceof Error ? error.message : "Native send persistence failed";
       setState((prev) => ({
         ...prev,
         conversations: prev.conversations.map((c) => {
           if (c.id !== conversationId) return c;
           const note = {
             id: uid("n"),
-            body: `WhatsApp send failed: ${failureText}`,
+            body: `Native persistence fallback: ${failureText}`,
             createdAt: new Date().toISOString(),
           };
           return {
             ...c,
-            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
+            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "sent" } : m),
             notes: [note, ...c.notes],
           };
         }),
       }));
-      return { ok: false, conversationId, localMessageId: messageId, error: failureText };
+
+      return { ok: true, conversationId, localMessageId: messageId, provider: conversation.provider };
     }
   }
 
-  function createConversation(input: CreateConversationInput) {
+  async function createConversation(input: CreateConversationInput) {
     const name = input.name.trim();
+    const phone = input.phone.trim();
     const subject = input.subject.trim();
-    const initialMessage = input.initialMessage.trim();
-    if (!name || !subject || !initialMessage) return null;
+    const initialBody = input.message.trim();
+    const email = input.email?.trim();
 
-    const now = new Date().toISOString();
+    if (!name || !subject || !initialBody) {
+      return { ok: false as const, error: "Name, subject, and initial message are required" };
+    }
+
     const contactId = uid("c");
     const conversationId = uid("v");
-    const phone = input.phone?.trim() || "";
-    const email = input.email?.trim() || undefined;
+    const messageId = uid("m");
+    const createdAt = new Date().toISOString();
+    const provider = "native" as const;
 
     const contact: Contact = {
       id: contactId,
       name,
-      phone: phone || "No phone yet",
-      email,
-      tags: [input.channel === "web" ? "website" : "native", "inbox core"],
-    };
-
-    const message: Message = {
-      id: uid("m"),
-      direction: "inbound",
-      body: initialMessage,
-      createdAt: now,
-      channel: input.channel,
-      provider: "native",
-      author: name,
+      phone: phone || "—",
+      email: email || undefined,
+      tags: [input.channel, "native"],
     };
 
     const conversation: Conversation = {
       id: conversationId,
       contactId,
       status: "new",
-      assignedTo: "t1",
       subject,
-      lastMessagePreview: initialMessage,
-      updatedAt: now,
-      messages: [message],
+      lastMessagePreview: initialBody,
+      updatedAt: createdAt,
+      messages: [{
+        id: messageId,
+        direction: "inbound",
+        body: initialBody,
+        createdAt,
+        channel: input.channel,
+        provider,
+        author: name,
+      }],
       notes: [],
       channel: input.channel,
-      provider: "native",
-      source: "customer",
+      provider,
       unreadCount: 1,
-      priority: input.priority ?? "medium",
-      labels: [input.channel === "web" ? "website" : "native", "inbox core"],
+      priority: input.channel === "manual" ? "medium" : "low",
+      labels: [input.channel, "native"],
+      persisted: false,
     };
 
     setState((prev) => ({
       ...prev,
       contacts: [contact, ...prev.contacts],
-      conversations: sortConversations([conversation, ...prev.conversations]),
+      conversations: [conversation, ...prev.conversations],
     }));
     setSelectedConversationId(conversationId);
-    return conversationId;
+
+    try {
+      const { response, payload } = await fetchJson("/api/inbox/native/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact,
+          conversation: {
+            id: conversationId,
+            subject,
+            status: "new",
+            lastMessagePreview: initialBody,
+            updatedAt: createdAt,
+            channel: input.channel,
+            priority: conversation.priority,
+            labels: conversation.labels,
+          },
+          initialMessage: {
+            id: messageId,
+            body: initialBody,
+            direction: "inbound",
+            createdAt,
+          },
+        }),
+      });
+
+      if (!response.ok || !payload?.ok) {
+        const errorText = typeof payload?.error === "string" ? payload.error : "Native conversation persistence failed";
+        throw new Error(errorText);
+      }
+
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, persisted: true } : c),
+      }));
+
+      return { ok: true as const, conversationId };
+    } catch (error) {
+      const failureText = error instanceof Error ? error.message : "Native conversation persistence failed";
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          return {
+            ...c,
+            notes: [{ id: uid("n"), body: `Native persistence fallback: ${failureText}`, createdAt: new Date().toISOString() }, ...c.notes],
+          };
+        }),
+      }));
+
+      return { ok: true as const, conversationId };
+    }
   }
 
   function addNote(conversationId: string, body: string) {
@@ -345,14 +493,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (c.id !== conversationId) return c;
         const note = { id: uid("n"), body, createdAt: new Date().toISOString() };
         return { ...c, notes: [note, ...c.notes] };
-      }),
+      })
     }));
   }
 
   function updateStatus(conversationId: string, status: Conversation["status"]) {
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, status, unreadCount: status === "resolved" ? 0 : c.unreadCount } : c),
+      conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, status } : c)
     }));
   }
 
@@ -363,7 +511,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       "Do you deliver in my area?",
       "I want a quote please.",
       "Can someone call me back?",
-      "How long does shipping take?",
+      "How long does shipping take?"
     ];
     const name = names[Math.floor(Math.random() * names.length)];
     const text = texts[Math.floor(Math.random() * texts.length)];
@@ -375,7 +523,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const matched = state.rules.find((r) => r.enabled && text.toLowerCase().includes(r.keyword.toLowerCase()));
     if (matched) autoReply = matched.autoReply;
 
-    const contact: Contact = { id: contactId, name, phone, tags: ["lead", "whatsapp", "meta"] };
+    const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
     const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString(), channel: "whatsapp", provider: "meta", author: name }];
     if (autoReply) {
       messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString(), channel: "whatsapp", provider: "meta", author: "Agent", deliveryState: "sent" });
@@ -393,16 +541,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       notes: [],
       channel: "whatsapp",
       provider: "meta",
-      source: "customer",
       unreadCount: 1,
       priority: "medium",
-      labels: ["new lead", "meta add-on"],
+      labels: ["new lead", "meta"],
+      persisted: false,
     };
 
     setState((prev) => ({
       ...prev,
       contacts: [contact, ...prev.contacts],
-      conversations: sortConversations([convo, ...prev.conversations]),
+      conversations: [convo, ...prev.conversations]
     }));
     setSelectedConversationId(convoId);
   }
@@ -414,7 +562,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       name: `Keyword: ${keyword}`,
       keyword,
       autoReply,
-      enabled: true,
+      enabled: true
     };
     setState((prev) => ({ ...prev, rules: [rule, ...prev.rules] }));
   }
@@ -442,7 +590,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     addNote,
     updateStatus,
     addQuote,
-    addProduct,
+    addProduct
   }), [state, selectedConversationId]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

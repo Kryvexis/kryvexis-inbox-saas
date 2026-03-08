@@ -1,7 +1,7 @@
 export type Status = "new" | "open" | "awaiting_customer" | "resolved";
 export type Channel = "whatsapp" | "web" | "manual";
 export type Provider = "meta" | "native" | "none";
-export type DeliveryState = "queued" | "pending" | "sent" | "delivered" | "read" | "failed";
+export type DeliveryState = "pending" | "queued" | "sent" | "delivered" | "read" | "failed";
 
 export type Contact = {
   id: string;
@@ -44,7 +44,7 @@ export type Conversation = {
   unreadCount: number;
   priority: "low" | "medium" | "high";
   labels: string[];
-  source?: "customer" | "agent" | "automation";
+  persisted?: boolean;
 };
 
 export type Rule = {
@@ -93,6 +93,31 @@ export type MetaInboundRecord = {
   received_at: string;
   wamid?: string;
   metadata?: Record<string, unknown>;
+};
+
+export type SendMessageResult =
+  | {
+      ok: true;
+      conversationId: string;
+      localMessageId: string;
+      remoteMessageId?: string;
+      provider: Provider;
+    }
+  | {
+      ok: false;
+      conversationId: string;
+      localMessageId?: string;
+      provider: Provider;
+      error: string;
+    };
+
+export type CreateConversationInput = {
+  name: string;
+  phone: string;
+  email?: string;
+  subject: string;
+  message: string;
+  channel: Extract<Channel, "web" | "manual">;
 };
 
 export type AppState = {
