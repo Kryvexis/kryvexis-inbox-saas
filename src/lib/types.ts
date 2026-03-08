@@ -1,6 +1,6 @@
 export type Status = "new" | "open" | "awaiting_customer" | "resolved";
-export type Channel = "whatsapp" | "web" | "manual" | "native";
-export type ProviderKind = "meta" | "native" | "none";
+export type Channel = "whatsapp" | "web" | "manual";
+export type Provider = "meta" | "native" | "none";
 export type DeliveryState = "queued" | "pending" | "sent" | "delivered" | "read" | "failed";
 
 export type Contact = {
@@ -17,11 +17,10 @@ export type Message = {
   body: string;
   createdAt: string;
   channel?: Channel;
-  provider?: ProviderKind;
+  provider?: Provider;
   author?: string;
   deliveryState?: DeliveryState;
   remoteMessageId?: string;
-  metadata?: Record<string, unknown>;
 };
 
 export type Note = {
@@ -41,10 +40,11 @@ export type Conversation = {
   messages: Message[];
   notes: Note[];
   channel: Channel;
-  provider: ProviderKind;
+  provider: Provider;
   unreadCount: number;
   priority: "low" | "medium" | "high";
   labels: string[];
+  source?: "customer" | "agent" | "automation";
 };
 
 export type Rule = {
@@ -85,13 +85,6 @@ export type MetaConnectionState = {
   webhookPath: string;
 };
 
-export type ConnectorHealth = {
-  provider: ProviderKind;
-  enabled: boolean;
-  label: string;
-  detail: string;
-};
-
 export type MetaInboundRecord = {
   id: string;
   phone: string;
@@ -101,22 +94,6 @@ export type MetaInboundRecord = {
   wamid?: string;
   metadata?: Record<string, unknown>;
 };
-
-export type SendMessageResult =
-  | {
-      ok: true;
-      conversationId: string;
-      messageId: string;
-      provider: ProviderKind;
-      remoteMessageId?: string;
-    }
-  | {
-      ok: false;
-      conversationId?: string;
-      messageId?: string;
-      provider?: ProviderKind;
-      error: string;
-    };
 
 export type AppState = {
   contacts: Contact[];

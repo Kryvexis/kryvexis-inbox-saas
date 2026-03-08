@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useStore } from "@/components/StoreProvider";
+import type { Conversation } from "@/lib/types";
 
 const statusOptions = [
   { value: "all", label: "All" },
@@ -15,17 +16,19 @@ function statusLabel(value: string) {
   return value.replaceAll("_", " ");
 }
 
-function providerLabel(value?: string) {
-  return value === "meta" ? "Meta add-on" : value === "native" ? "Inbox core" : "Internal";
+function providerLabel(conversation?: Conversation) {
+  if (!conversation) return "—";
+  return conversation.provider === "meta" ? "Meta add-on" : "Inbox core";
 }
 
 export default function InboxPage() {
-  const { state, selectedConversationId, setSelectedConversationId, sendMessage, addNote, updateStatus } = useStore();
+  const { state, selectedConversationId, setSelectedConversationId, sendMessage, createConversation, addNote, updateStatus } = useStore();
   const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
   const [note, setNote] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]["value"]>("all");
+  const [sending, setSending] = useState(false);
+  const [createForm, setCreateForm] = useState({ name: "", phone: "", email: "", subject: "", initialMessage: "", channel: "web" as "web" | "manual" });
 
   const filteredConversations = useMemo(() => {
     return state.conversations.filter((c) => {
@@ -40,7 +43,7 @@ export default function InboxPage() {
 
   const selected = useMemo(
     () => filteredConversations.find((c) => c.id === selectedConversationId) ?? filteredConversations[0] ?? state.conversations[0],
-    [filteredConversations, state.conversations, selectedConversationId],
+    [filteredConversations, state.conversations, selectedConversationId]
   );
 
   const selectedContact = state.contacts.find((c) => c.id === selected?.contactId);
@@ -49,9 +52,10 @@ export default function InboxPage() {
     openCount: state.conversations.filter((c) => c.status === "open").length,
     waitingCount: state.conversations.filter((c) => c.status === "awaiting_customer").length,
   }), [state.conversations]);
+
   const providerCounts = useMemo(() => ({
-    native: state.conversations.filter((c) => c.provider === "native").length,
-    meta: state.conversations.filter((c) => c.provider === "meta").length,
+    inboxCore: state.conversations.filter((c) => c.provider === "native").length,
+    metaAddon: state.conversations.filter((c) => c.provider === "meta").length,
   }), [state.conversations]);
 
   return (
@@ -59,20 +63,42 @@ export default function InboxPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-xl font-semibold">Inbox</div>
-          <div className="text-sm text-neutral-500">Run Kryvexis Inbox as a native messaging CRM first, with Meta/WhatsApp as an optional add-on.</div>
+          <div className="text-sm text-neutral-500">Run Kryvexis Inbox as a native messaging workspace first, with Meta available as an add-on connector.</div>
         </div>
-        <div className="grid grid-cols-5 gap-2 text-sm md:w-[620px]">
+        <div className="grid grid-cols-3 gap-2 text-sm md:w-[360px]">
           <div className="kx-card2 p-3"><div className="text-neutral-500">New</div><div className="mt-1 text-xl font-semibold">{queueCounts.newCount}</div></div>
-          <div className="kx-card2 p-3"><div className="text-neutral-500">Open</div><div className="mt-1 text-xl font-semibold">{queueCounts.openCount}</div></div>
-          <div className="kx-card2 p-3"><div className="text-neutral-500">Awaiting</div><div className="mt-1 text-xl font-semibold">{queueCounts.waitingCount}</div></div>
-          <div className="kx-card2 p-3"><div className="text-neutral-500">Inbox core</div><div className="mt-1 text-xl font-semibold">{providerCounts.native}</div></div>
-          <div className="kx-card2 p-3"><div className="text-neutral-500">Meta add-on</div><div className="mt-1 text-xl font-semibold">{providerCounts.meta}</div></div>
+          <div className="kx-card2 p-3"><div className="text-neutral-500">Inbox core</div><div className="mt-1 text-xl font-semibold">{providerCounts.inboxCore}</div></div>
+          <div className="kx-card2 p-3"><div className="text-neutral-500">Meta add-on</div><div className="mt-1 text-xl font-semibold">{providerCounts.metaAddon}</div></div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr_320px]">
         <div className="kx-card2 overflow-hidden">
           <div className="border-b border-neutral-200 p-3 space-y-3">
+            <div className="rounded-2xl border border-neutral-200 p-3 space-y-3">
+              <div className="text-sm font-medium">Start native conversation</div>
+              <div className="grid gap-2">
+                <input className="kx-input" value={createForm.name} onChange={(e) => setCreateForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Customer name" />
+                <input className="kx-input" value={createForm.phone} onChange={(e) => setCreateForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Phone (optional for native)" />
+                <input className="kx-input" value={createForm.email} onChange={(e) => setCreateForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Email (optional)" />
+                <select className="kx-input" value={createForm.channel} onChange={(e) => setCreateForm((prev) => ({ ...prev, channel: e.target.value as "web" | "manual" }))}>
+                  <option value="web">Web / customer chat</option>
+                  <option value="manual">Manual / CRM thread</option>
+                </select>
+                <input className="kx-input" value={createForm.subject} onChange={(e) => setCreateForm((prev) => ({ ...prev, subject: e.target.value }))} placeholder="Subject" />
+                <textarea className="kx-input min-h-[88px]" value={createForm.initialMessage} onChange={(e) => setCreateForm((prev) => ({ ...prev, initialMessage: e.target.value }))} placeholder="Initial customer message" />
+                <button
+                  className="kx-btn kx-btn-primary"
+                  onClick={() => {
+                    const conversationId = createConversation(createForm);
+                    if (!conversationId) return;
+                    setCreateForm({ name: "", phone: "", email: "", subject: "", initialMessage: "", channel: "web" });
+                  }}
+                >
+                  Create Inbox thread
+                </button>
+              </div>
+            </div>
             <input
               className="kx-input"
               value={search}
@@ -101,7 +127,7 @@ export default function InboxPage() {
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
                     <span className="kx-badge">{statusLabel(c.status)}</span>
                     <span className="kx-badge">{c.channel}</span>
-                    <span className="kx-badge">{providerLabel(c.provider)}</span>
+                    <span className="kx-badge">{providerLabel(c)}</span>
                     <span className="kx-badge">{c.priority}</span>
                   </div>
                 </button>
@@ -115,7 +141,7 @@ export default function InboxPage() {
           <div className="border-b border-neutral-200 p-3 flex items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium">{selectedContact?.name ?? "Select conversation"}</div>
-              <div className="text-xs text-neutral-500">{selectedContact?.phone || selectedContact?.email || "No external address"} · {selected?.channel ?? "channel"} · {providerLabel(selected?.provider)}</div>
+              <div className="text-xs text-neutral-500">{selectedContact?.phone} · {selected?.channel ?? "channel"} · {providerLabel(selected)}</div>
             </div>
             {selected ? (
               <select
@@ -145,8 +171,7 @@ export default function InboxPage() {
                 <div className={m.direction === "outbound" ? "mt-1 text-xs text-white/70" : "mt-1 text-xs text-neutral-500"}>
                   {m.author ?? m.direction} · {new Date(m.createdAt).toLocaleString()}
                   {m.deliveryState ? ` · ${m.deliveryState}` : ""}
-                  {m.provider ? ` · ${providerLabel(m.provider)}` : ""}
-                  {m.remoteMessageId ? ` · ${m.remoteMessageId}` : ""}
+                  {m.provider ? ` · ${m.provider}` : ""}
                 </div>
               </div>
             ))}
@@ -164,20 +189,17 @@ export default function InboxPage() {
                   className="kx-input"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder={selected.provider === "meta" ? "Reply via Meta WhatsApp add-on" : "Write a native Inbox reply"}
+                  placeholder={selected.provider === "meta" ? "Reply via Meta WhatsApp add-on" : "Reply inside Inbox core"}
                 />
                 <button
                   className="kx-btn kx-btn-primary"
-                  disabled={sending || !body.trim()}
+                  disabled={sending}
                   onClick={async () => {
                     if (sending) return;
                     setSending(true);
-                    try {
-                      const result = await sendMessage(selected.id, body);
-                      if (result.ok) setBody("");
-                    } finally {
-                      setSending(false);
-                    }
+                    const result = await sendMessage(selected.id, body);
+                    if (result.ok) setBody("");
+                    setSending(false);
                   }}
                 >
                   {sending ? "Sending..." : "Send"}
@@ -203,7 +225,7 @@ export default function InboxPage() {
             <div className="text-sm font-medium">Connection context</div>
             <div className="mt-3 text-sm text-neutral-600 space-y-1">
               <div>Channel: <b>{selected?.channel ?? "—"}</b></div>
-              <div>Provider: <b>{providerLabel(selected?.provider)}</b></div>
+              <div>Provider: <b>{providerLabel(selected)}</b></div>
               <div>Assigned to: <b>{selected?.assignedTo ?? "Unassigned"}</b></div>
               <div>Latest activity: <b>{selected ? new Date(selected.updatedAt).toLocaleString() : "—"}</b></div>
             </div>

@@ -2,24 +2,28 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { seedState } from "@/lib/seed";
-import type {
-  AppState,
-  Conversation,
-  Rule,
-  Contact,
-  Quote,
-  Product,
-  Message,
-  MetaInboundRecord,
-  ProviderKind,
-  SendMessageResult,
-} from "@/lib/types";
+import type { AppState, Conversation, Rule, Contact, Quote, Product, Message, MetaInboundRecord } from "@/lib/types";
+
+type SendMessageResult =
+  | { ok: true; conversationId: string; localMessageId: string; remoteMessageId?: string }
+  | { ok: false; conversationId: string; localMessageId?: string; error: string };
+
+type CreateConversationInput = {
+  name: string;
+  phone?: string;
+  email?: string;
+  subject: string;
+  initialMessage: string;
+  channel: "web" | "manual";
+  priority?: Conversation["priority"];
+};
 
 type Store = {
   state: AppState;
   selectedConversationId: string | null;
   setSelectedConversationId: (id: string | null) => void;
   sendMessage: (conversationId: string, body: string) => Promise<SendMessageResult>;
+  createConversation: (input: CreateConversationInput) => string | null;
   injectLead: () => void;
   addRule: (keyword: string, autoReply: string) => void;
   addNote: (conversationId: string, body: string) => void;
@@ -29,7 +33,7 @@ type Store = {
 };
 
 const StoreContext = createContext<Store | null>(null);
-const KEY = "kryvexis_showcase_state_v2";
+const KEY = "kryvexis_showcase_state_v1";
 
 function uid(prefix: string) {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -42,11 +46,8 @@ function normalisePhone(input: string) {
   return digits;
 }
 
-function resolveProvider(conversation: Conversation): ProviderKind {
-  if (conversation.provider) return conversation.provider;
-  if (conversation.channel === "whatsapp") return "meta";
-  if (conversation.channel === "web" || conversation.channel === "native") return "native";
-  return "none";
+function sortConversations(conversations: Conversation[]) {
+  return [...conversations].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 }
 
 function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): AppState {
@@ -63,7 +64,7 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
         id: uid("c"),
         name: item.contact_name?.trim() || phone,
         phone: phone.startsWith("27") ? `+${phone}` : item.phone,
-        tags: ["whatsapp"],
+        tags: ["whatsapp", "meta"],
       };
       contacts = [contact, ...contacts];
     }
@@ -76,16 +77,14 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
       createdAt: item.received_at,
       channel: "whatsapp",
       provider: "meta",
-      author: item.contact_name?.trim() || contact.name,
       remoteMessageId: item.wamid,
-      metadata: item.metadata,
+      author: item.contact_name?.trim() || contact.name,
     };
 
     if (existingConversation) {
       if (existingConversation.messages.some((m) => m.id === inboundMessage.id || (item.wamid && m.remoteMessageId === item.wamid))) continue;
       conversations = conversations.map((c) => c.id === existingConversation.id ? {
         ...c,
-        provider: resolveProvider(c),
         status: c.status === "resolved" ? "open" : c.status === "awaiting_customer" ? "open" : c.status,
         updatedAt: item.received_at,
         lastMessagePreview: item.body,
@@ -108,23 +107,15 @@ function mergeIncomingMessages(prev: AppState, incoming: MetaInboundRecord[]): A
       notes: [],
       channel: "whatsapp",
       provider: "meta",
+      source: "customer",
       unreadCount: 1,
       priority: "medium",
-      labels: ["whatsapp", "live inbound"],
+      labels: ["whatsapp", "live inbound", "meta add-on"],
     };
     conversations = [newConversation, ...conversations];
   }
 
-  conversations.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  return { ...prev, contacts, conversations };
-}
-
-function makeFailureNote(prefix: string, body: string) {
-  return {
-    id: uid("n"),
-    body: `${prefix}: ${body}`,
-    createdAt: new Date().toISOString(),
-  };
+  return { ...prev, contacts, conversations: sortConversations(conversations) };
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -133,22 +124,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY) || localStorage.getItem("kryvexis_showcase_state_v1");
+      const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as AppState;
-        const upgraded: AppState = {
-          ...parsed,
-          conversations: parsed.conversations.map((conversation) => ({
-            ...conversation,
-            provider: resolveProvider(conversation),
-            messages: conversation.messages.map((message) => ({
-              ...message,
-              provider: message.provider ?? resolveProvider(conversation),
-            })),
-          })),
-        };
-        setState(upgraded);
-        setSelectedConversationId(upgraded.conversations[0]?.id ?? null);
+        setState(parsed);
+        setSelectedConversationId(parsed.conversations[0]?.id ?? null);
       }
     } catch {}
   }, []);
@@ -190,156 +170,171 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function sendViaMeta(input: {
-    conversationId: string;
-    messageId: string;
-    to: string;
-    body: string;
-  }): Promise<SendMessageResult> {
-    const response = await fetch("/api/meta/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        to: input.to,
-        body: input.body,
-        conversationId: input.conversationId,
-        messageId: input.messageId,
-      }),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const errorText = typeof payload?.error === "string"
-        ? payload.error
-        : typeof payload?.details === "string"
-          ? payload.details
-          : "Meta send failed";
-      return {
-        ok: false,
-        conversationId: input.conversationId,
-        messageId: input.messageId,
-        provider: "meta",
-        error: errorText,
-      };
-    }
-
-    return {
-      ok: true,
-      conversationId: input.conversationId,
-      messageId: input.messageId,
-      provider: "meta",
-      remoteMessageId: payload?.remoteMessageId || payload?.messages?.[0]?.id,
-    };
-  }
-
-  async function sendNative(input: {
-    conversationId: string;
-    messageId: string;
-  }): Promise<SendMessageResult> {
-    return {
-      ok: true,
-      conversationId: input.conversationId,
-      messageId: input.messageId,
-      provider: "native",
-    };
-  }
-
   async function sendMessage(conversationId: string, body: string): Promise<SendMessageResult> {
     const trimmed = body.trim();
-    if (!trimmed) return { ok: false, error: "Message body is empty" };
+    if (!trimmed) {
+      return { ok: false, conversationId, error: "Message body is empty" };
+    }
 
     const conversation = state.conversations.find((c) => c.id === conversationId);
-    if (!conversation) return { ok: false, error: "Conversation not found" };
+    if (!conversation) {
+      return { ok: false, conversationId, error: "Conversation not found" };
+    }
 
-    const provider = resolveProvider(conversation);
     const contact = state.contacts.find((c) => c.id === conversation.contactId);
     const messageId = uid("m");
     const createdAt = new Date().toISOString();
-    const normalisedTo = contact?.phone ? normalisePhone(contact.phone) : "";
+    const isMetaWhatsApp = conversation.channel === "whatsapp" && conversation.provider === "meta";
+    const localDeliveryState: Message["deliveryState"] = isMetaWhatsApp ? "pending" : "sent";
 
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) => {
+      conversations: sortConversations(prev.conversations.map((c) => {
         if (c.id !== conversationId) return c;
-        const message: Message = {
+        const msg: Message = {
           id: messageId,
           direction: "outbound",
           body: trimmed,
           createdAt,
           channel: c.channel,
-          provider,
+          provider: c.provider,
           author: "Agent",
-          deliveryState: provider === "meta" ? "queued" : provider === "native" ? "sent" : "sent",
+          deliveryState: localDeliveryState,
         };
         return {
           ...c,
-          provider,
           lastMessagePreview: trimmed,
           updatedAt: createdAt,
-          unreadCount: 0,
           status: c.status === "new" ? "open" : c.status,
-          messages: [...c.messages, message],
+          messages: [...c.messages, msg],
         };
-      }),
+      })),
     }));
 
-    if (provider === "meta") {
-      if (!normalisedTo) {
-        const failureText = "Missing WhatsApp contact phone number";
-        setState((prev) => ({
-          ...prev,
-          conversations: prev.conversations.map((c) => c.id === conversationId ? {
-            ...c,
-            messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
-            notes: [makeFailureNote("WhatsApp send failed", failureText), ...c.notes],
-          } : c),
-        }));
-        return { ok: false, conversationId, messageId, provider, error: failureText };
+    if (!isMetaWhatsApp) {
+      return { ok: true, conversationId, localMessageId: messageId };
+    }
+
+    if (!contact?.phone) {
+      return { ok: false, conversationId, localMessageId: messageId, error: "Missing WhatsApp phone number" };
+    }
+
+    try {
+      const response = await fetch("/api/meta/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          messageId,
+          to: contact.phone,
+          body: trimmed,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !payload?.ok) {
+        const errorText = typeof payload?.error === "string" ? payload.error : "Meta send failed";
+        throw new Error(errorText);
       }
 
       setState((prev) => ({
         ...prev,
-        conversations: prev.conversations.map((c) => c.id === conversationId ? {
-          ...c,
-          messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "pending" } : m),
-        } : c),
-      }));
-
-      const result = await sendViaMeta({ conversationId, messageId, to: normalisedTo, body: trimmed });
-      if (result.ok) {
-        setState((prev) => ({
-          ...prev,
-          conversations: prev.conversations.map((c) => c.id === conversationId ? {
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          return {
             ...c,
             messages: c.messages.map((m) => m.id === messageId ? {
               ...m,
               deliveryState: "sent",
-              remoteMessageId: result.remoteMessageId,
+              remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : m.remoteMessageId,
             } : m),
-          } : c),
-        }));
-      } else {
-        setState((prev) => ({
-          ...prev,
-          conversations: prev.conversations.map((c) => c.id === conversationId ? {
+          };
+        }),
+      }));
+
+      return {
+        ok: true,
+        conversationId,
+        localMessageId: messageId,
+        remoteMessageId: typeof payload?.remoteMessageId === "string" ? payload.remoteMessageId : undefined,
+      };
+    } catch (error) {
+      const failureText = error instanceof Error ? error.message : "Meta send failed";
+      setState((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((c) => {
+          if (c.id !== conversationId) return c;
+          const note = {
+            id: uid("n"),
+            body: `WhatsApp send failed: ${failureText}`,
+            createdAt: new Date().toISOString(),
+          };
+          return {
             ...c,
             messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "failed" } : m),
-            notes: [makeFailureNote("WhatsApp send failed", result.error), ...c.notes],
-          } : c),
-        }));
-      }
-      return result;
+            notes: [note, ...c.notes],
+          };
+        }),
+      }));
+      return { ok: false, conversationId, localMessageId: messageId, error: failureText };
     }
+  }
 
-    const result = await sendNative({ conversationId, messageId });
+  function createConversation(input: CreateConversationInput) {
+    const name = input.name.trim();
+    const subject = input.subject.trim();
+    const initialMessage = input.initialMessage.trim();
+    if (!name || !subject || !initialMessage) return null;
+
+    const now = new Date().toISOString();
+    const contactId = uid("c");
+    const conversationId = uid("v");
+    const phone = input.phone?.trim() || "";
+    const email = input.email?.trim() || undefined;
+
+    const contact: Contact = {
+      id: contactId,
+      name,
+      phone: phone || "No phone yet",
+      email,
+      tags: [input.channel === "web" ? "website" : "native", "inbox core"],
+    };
+
+    const message: Message = {
+      id: uid("m"),
+      direction: "inbound",
+      body: initialMessage,
+      createdAt: now,
+      channel: input.channel,
+      provider: "native",
+      author: name,
+    };
+
+    const conversation: Conversation = {
+      id: conversationId,
+      contactId,
+      status: "new",
+      assignedTo: "t1",
+      subject,
+      lastMessagePreview: initialMessage,
+      updatedAt: now,
+      messages: [message],
+      notes: [],
+      channel: input.channel,
+      provider: "native",
+      source: "customer",
+      unreadCount: 1,
+      priority: input.priority ?? "medium",
+      labels: [input.channel === "web" ? "website" : "native", "inbox core"],
+    };
+
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) => c.id === conversationId ? {
-        ...c,
-        messages: c.messages.map((m) => m.id === messageId ? { ...m, deliveryState: "sent" } : m),
-      } : c),
+      contacts: [contact, ...prev.contacts],
+      conversations: sortConversations([conversation, ...prev.conversations]),
     }));
-    return result;
+    setSelectedConversationId(conversationId);
+    return conversationId;
   }
 
   function addNote(conversationId: string, body: string) {
@@ -357,7 +352,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   function updateStatus(conversationId: string, status: Conversation["status"]) {
     setState((prev) => ({
       ...prev,
-      conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, status } : c),
+      conversations: prev.conversations.map((c) => c.id === conversationId ? { ...c, status, unreadCount: status === "resolved" ? 0 : c.unreadCount } : c),
     }));
   }
 
@@ -380,7 +375,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const matched = state.rules.find((r) => r.enabled && text.toLowerCase().includes(r.keyword.toLowerCase()));
     if (matched) autoReply = matched.autoReply;
 
-    const contact: Contact = { id: contactId, name, phone, tags: ["lead"] };
+    const contact: Contact = { id: contactId, name, phone, tags: ["lead", "whatsapp", "meta"] };
     const messages: Conversation["messages"] = [{ id: uid("m"), direction: "inbound", body: text, createdAt: new Date().toISOString(), channel: "whatsapp", provider: "meta", author: name }];
     if (autoReply) {
       messages.push({ id: uid("m"), direction: "outbound", body: autoReply, createdAt: new Date().toISOString(), channel: "whatsapp", provider: "meta", author: "Agent", deliveryState: "sent" });
@@ -398,15 +393,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       notes: [],
       channel: "whatsapp",
       provider: "meta",
+      source: "customer",
       unreadCount: 1,
       priority: "medium",
-      labels: ["new lead"],
+      labels: ["new lead", "meta add-on"],
     };
 
     setState((prev) => ({
       ...prev,
       contacts: [contact, ...prev.contacts],
-      conversations: [convo, ...prev.conversations],
+      conversations: sortConversations([convo, ...prev.conversations]),
     }));
     setSelectedConversationId(convoId);
   }
@@ -440,6 +436,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     selectedConversationId,
     setSelectedConversationId,
     sendMessage,
+    createConversation,
     injectLead,
     addRule,
     addNote,
