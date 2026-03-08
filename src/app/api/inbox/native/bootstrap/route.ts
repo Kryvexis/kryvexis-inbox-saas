@@ -1,23 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/serverSupabaseAdmin";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/data";
 import type { AppState, Contact, Conversation, Message } from "@/lib/types";
 
 async function getTenantId() {
-  const ssr = await supabaseServer();
-  const { data: userData } = await ssr.auth.getUser();
-  if (!userData.user) return null;
-
-  const admin = getServerSupabaseAdmin();
-  if (!admin) return null;
-
-  const { data } = await admin
-    .from("profiles")
-    .select("tenant_id")
-    .eq("id", userData.user.id)
-    .maybeSingle();
-
-  return (data?.tenant_id as string | null) ?? null;
+  const profile = await getProfile();
+  return profile?.tenant_id ?? null;
 }
 
 export async function GET() {

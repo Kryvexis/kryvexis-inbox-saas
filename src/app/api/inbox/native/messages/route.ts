@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/serverSupabaseAdmin";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/data";
 
 async function getTenantContext() {
-  const ssr = await supabaseServer();
-  const { data: userData } = await ssr.auth.getUser();
-  if (!userData.user) return null;
+  const profile = await getProfile();
+  const tenantId = profile?.tenant_id ?? null;
+  if (!tenantId) return null;
 
   const admin = getServerSupabaseAdmin();
   if (!admin) return null;
-
-  const { data } = await admin
-    .from("profiles")
-    .select("tenant_id")
-    .eq("id", userData.user.id)
-    .maybeSingle();
-
-  const tenantId = (data?.tenant_id as string | null) ?? null;
-  if (!tenantId) return null;
 
   return { admin, tenantId };
 }
